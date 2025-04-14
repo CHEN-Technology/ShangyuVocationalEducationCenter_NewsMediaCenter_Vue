@@ -1,0 +1,78 @@
+<template>
+	<SidebarProvider class="min-h-screen" ref="sidebarProvider">
+		<AppSidebar class="h-[90dvh] mt-auto" />
+		<SidebarInset class="h-[90dvh] mt-auto flex justify-start">
+			<header
+				class="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 w-full border"
+			>
+				<div class="flex items-center gap-4 h-4">
+					<SidebarTrigger class="ml-4 cursor-pointer" />
+					<Separator orientation="vertical" class="mr-2 h-4" />
+					<Breadcrumb>
+						<BreadcrumbList>
+							<BreadcrumbItem v-for="(item, index) in breadcrumbs" :key="index">
+								<template v-if="index === breadcrumbs.length - 1">
+									<BreadcrumbPage>{{ item.title }}</BreadcrumbPage>
+								</template>
+								<template v-else>
+									<BreadcrumbLink :href="item.path">
+										{{ item.title }}
+									</BreadcrumbLink>
+								</template>
+								<BreadcrumbSeparator v-if="index < breadcrumbs.length - 1" />
+							</BreadcrumbItem>
+						</BreadcrumbList>
+					</Breadcrumb>
+				</div>
+			</header>
+			<RouterView />
+		</SidebarInset>
+	</SidebarProvider>
+</template>
+
+<script setup lang="ts">
+	import { ref, watch } from "vue";
+	import { useRoute } from "vue-router";
+	import {
+		SidebarProvider,
+		SidebarTrigger,
+		SidebarInset,
+	} from "@/components/ui/sidebar";
+	import {
+		Breadcrumb,
+		BreadcrumbItem,
+		BreadcrumbLink,
+		BreadcrumbList,
+		BreadcrumbPage,
+		BreadcrumbSeparator,
+	} from "@/components/ui/breadcrumb";
+	import AppSidebar from "@/components/AppSidebar.vue";
+	import { Separator } from "@/components/ui/separator";
+	import { RouterView } from "vue-router";
+
+	interface BreadcrumbItem {
+		title: string;
+		path: string;
+	}
+
+	const route = useRoute();
+	const breadcrumbs = ref<BreadcrumbItem[]>([]);
+
+	const updateBreadcrumbs = () => {
+		const matchedRoutes = route.matched.filter(
+			(record) => record.meta?.breadcrumb
+		);
+		breadcrumbs.value = matchedRoutes.map((record) => ({
+			title: record.meta.breadcrumb as string,
+			path: record.path,
+		}));
+	};
+
+	// 初始更新
+	updateBreadcrumbs();
+
+	// 监听路由变化
+	watch(() => route.path, updateBreadcrumbs);
+</script>
+
+<style scoped></style>
