@@ -1,9 +1,9 @@
 <template>
-	<Button variant="ghost" class="h-8 w-8 p-0 cursor-pointer"></Button>
+	<Download />
 </template>
 
 <script setup lang="ts">
-	import { Button } from "@/components/ui/button";
+	import Download from "@/components/Download.vue";
 </script>
 
 <style scoped></style>
