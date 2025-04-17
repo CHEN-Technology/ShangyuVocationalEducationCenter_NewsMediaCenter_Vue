@@ -16,6 +16,9 @@
 				<div v-if="uploading">
 					<p class="mb-1">上传进度: {{ totalProgressPercent }}%</p>
 					<Progress :model-value="totalProgressPercent" />
+					<p class="text-xs text-gray-500">
+						并发上传数: {{ concurrentUploads }}
+					</p>
 				</div>
 
 				<!-- 合并进度 -->
@@ -63,6 +66,7 @@
 	import getFilename from "@/utils/getFilename";
 	import createChunks from "@/utils/createChunks";
 	import axios, { type CancelTokenSource } from "axios";
+	import pLimit from "p-limit";
 
 	interface ProgressInfo {
 		[key: string]: number;
@@ -76,6 +80,7 @@
 		mergeProgress: number;
 		uploadComplete: boolean;
 		totalChunks: number;
+		concurrentUploads: number;
 	}
 
 	interface VerifyResponse {
@@ -90,6 +95,9 @@
 	}
 
 	const selectedFile = ref<File | null>(null);
+	// 设置最大并发数
+	const CONCURRENT_LIMIT = 3;
+	const concurrentUploads = ref(0);
 
 	function fileChange(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -108,6 +116,7 @@
 				state.uploadComplete = false;
 				state.progressInfo = {};
 				state.mergeProgress = 0;
+				concurrentUploads.value = 0;
 			} catch (error) {
 				console.error("读取文件失败:", error);
 				toast.error("读取文件失败，请检查文件权限或尝试重新选择");
@@ -123,6 +132,7 @@
 		mergeProgress: 0,
 		uploadComplete: false,
 		totalChunks: 0,
+		concurrentUploads: 0,
 	});
 
 	const {
@@ -142,6 +152,7 @@
 		cancelTokens.forEach((cancelToken) => {
 			cancelToken.cancel();
 		});
+		concurrentUploads.value = 0;
 	};
 
 	const handleUpload = async () => {
@@ -162,64 +173,77 @@
 					return;
 				}
 
-				const CHUNK_SIZE = 1024 * 1024 * 100;
+				const CHUNK_SIZE = 1024 * 1024 * 100; // 100MB
 				const chunks = createChunks(selectedFile.value, CHUNK_SIZE, filename);
 				state.totalChunks = chunks.length;
 				state.uploading = true;
 
+				// 创建并发限制器
+				const limit = pLimit(CONCURRENT_LIMIT);
+
 				const requests = chunks.map((chunkInfo) => {
-					const cancelToken = axios.CancelToken.source();
-					cancelTokens.push(cancelToken);
-					// 查找是否有上传过的切片
-					const uploadedChunk = response.uploadedChunks.find(
-						(item) => item.chunkFilename === chunkInfo.chunkFilename
-					);
+					return limit(async () => {
+						concurrentUploads.value = limit.activeCount + limit.pendingCount;
 
-					// 初始化要上传的切片和位置
-					let chunk = chunkInfo.chunk;
-					let start = 0;
-					// 总大小，用于计算进度
-					const totalSize = chunk.size;
-					if (uploadedChunk) {
-						// 如果已经上传过了，切除掉已经上传的部分
-						chunk = chunk.slice(uploadedChunk.size);
-						// 从已经上传的位置开始
-						start = uploadedChunk.size;
-					}
-					// 切除之后，如果剩下还有切片大小就继续上传，没有就说明整个都上传过了，不用再上传这个
-					if (chunk.size > 0) {
-						// 初始进度
-						progressInfo.value[chunkInfo.chunkFilename] = Math.round(
-							(start * 100) / totalSize
+						const cancelToken = axios.CancelToken.source();
+						cancelTokens.push(cancelToken);
+
+						// 查找是否有上传过的切片
+						const uploadedChunk = response.uploadedChunks.find(
+							(item) => item.chunkFilename === chunkInfo.chunkFilename
 						);
 
-						return axiosInstance.post(
-							`${import.meta.env.VITE_APP_URL}/video/upload/${filename}`,
-							chunk,
-							{
-								headers: {
-									"Content-Type": "application/octet-stream",
-								},
-								params: {
-									chunkFilename: chunkInfo.chunkFilename,
-									start,
-								},
-								onUploadProgress(progressEvent) {
-									const total = progressEvent.total || 1;
-									if (selectedFile.value) {
-										progressInfo.value[chunkInfo.chunkFilename] = Math.round(
-											(progressEvent.loaded * 100) / total
-										);
+						// 初始化要上传的切片和位置
+						let chunk = chunkInfo.chunk;
+						let start = 0;
+						// 总大小，用于计算进度
+						const totalSize = chunk.size;
+						if (uploadedChunk) {
+							// 如果已经上传过了，切除掉已经上传的部分
+							chunk = chunk.slice(uploadedChunk.size);
+							// 从已经上传的位置开始
+							start = uploadedChunk.size;
+						}
+
+						// 切除之后，如果剩下还有切片大小就继续上传，没有就说明整个都上传过了，不用再上传这个
+						if (chunk.size > 0) {
+							// 初始进度
+							progressInfo.value[chunkInfo.chunkFilename] = Math.round(
+								(start * 100) / totalSize
+							);
+
+							try {
+								await axiosInstance.post(
+									`${import.meta.env.VITE_APP_URL}/video/upload/${filename}`,
+									chunk,
+									{
+										headers: {
+											"Content-Type": "application/octet-stream",
+										},
+										params: {
+											chunkFilename: chunkInfo.chunkFilename,
+											start,
+										},
+										onUploadProgress(progressEvent) {
+											const total = progressEvent.total || 1;
+											if (selectedFile.value) {
+												progressInfo.value[chunkInfo.chunkFilename] =
+													Math.round((progressEvent.loaded * 100) / total);
+											}
+										},
+										cancelToken: cancelToken.token,
 									}
-								},
-								cancelToken: cancelToken.token,
+								);
+							} finally {
+								concurrentUploads.value =
+									limit.activeCount + limit.pendingCount;
 							}
-						);
-					} else {
-						progressInfo.value[chunkInfo.chunkFilename] = 100;
-						return Promise.resolve();
-					}
+						} else {
+							progressInfo.value[chunkInfo.chunkFilename] = 100;
+						}
+					});
 				});
+
 				await Promise.all(requests);
 
 				state.uploading = false;
@@ -258,6 +282,7 @@
 			} finally {
 				state.calculating = false;
 				state.uploading = false;
+				concurrentUploads.value = 0;
 			}
 		}
 	};

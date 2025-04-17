@@ -130,6 +130,7 @@
 						size="sm"
 						@click="goToPage(1)"
 						:disabled="currentPage === 1"
+						class="cursor-pointer"
 					>
 						首页
 					</Button>
@@ -138,6 +139,7 @@
 						size="sm"
 						@click="prevPage"
 						:disabled="currentPage === 1"
+						class="cursor-pointer"
 					>
 						上一页
 					</Button>
@@ -146,6 +148,7 @@
 						size="sm"
 						@click="nextPage"
 						:disabled="currentPage * pageSize >= totalUsers"
+						class="cursor-pointer"
 					>
 						下一页
 					</Button>
@@ -154,6 +157,7 @@
 						size="sm"
 						@click="goToPage(totalPages)"
 						:disabled="currentPage === totalPages"
+						class="cursor-pointer"
 					>
 						末页
 					</Button>
@@ -191,8 +195,15 @@
 					</div>
 				</div>
 				<DialogFooter>
-					<Button variant="outline" @click="isDialogOpen = false">取消</Button>
-					<Button type="submit" @click="handleSubmit">保存</Button>
+					<Button
+						variant="outline"
+						@click="isDialogOpen = false"
+						class="cursor-pointer"
+						>取消</Button
+					>
+					<Button type="submit" @click="handleSubmit" class="cursor-pointer"
+						>保存</Button
+					>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
@@ -207,10 +218,18 @@
 					</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>
-					<Button variant="outline" @click="isResetPasswordDialogOpen = false">
+					<Button
+						variant="outline"
+						@click="isResetPasswordDialogOpen = false"
+						class="cursor-pointer"
+					>
 						取消
 					</Button>
-					<Button variant="destructive" @click="handleResetPassword">
+					<Button
+						variant="destructive"
+						@click="handleResetPassword"
+						class="cursor-pointer"
+					>
 						确认重置
 					</Button>
 				</DialogFooter>
@@ -227,10 +246,18 @@
 					</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>
-					<Button variant="outline" @click="isDeleteDialogOpen = false">
+					<Button
+						variant="outline"
+						@click="isDeleteDialogOpen = false"
+						class="cursor-pointer"
+					>
 						取消
 					</Button>
-					<Button variant="destructive" @click="handleDelete">
+					<Button
+						variant="destructive"
+						@click="handleDelete"
+						class="cursor-pointer"
+					>
 						确认删除
 					</Button>
 				</DialogFooter>
@@ -457,7 +484,7 @@
 					return;
 				}
 				await axios.post(`${import.meta.env.VITE_APP_URL}/users/add`, form);
-				toast.success("用户已添加");
+				toast.success("用户已添加，默认密码为123456，请及时修改密码");
 			}
 
 			// 刷新用户列表
