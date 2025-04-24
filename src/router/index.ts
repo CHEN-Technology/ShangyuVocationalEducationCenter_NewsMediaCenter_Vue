@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useUserStore } from "@/stores/User";
 import { watchEffect } from "vue";
+import Breadcrumb from "@/components/ui/breadcrumb/Breadcrumb.vue";
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.BASE_URL),
@@ -50,6 +51,23 @@ const router = createRouter({
 					meta: {
 						breadcrumb: "视频管理",
 					},
+					redirect: "/admin/video/cate",
+					children: [
+						{
+							path: "cate",
+							component: () => import("@/views/admin/video/VideoCateView.vue"),
+							meta: {
+								breadcrumb: "分类管理",
+							},
+						},
+						{
+							path: "list",
+							component: () => import("@/views/admin/video/VideoListView.vue"),
+							meta: {
+								breadcrumb: "视频管理",
+							},
+						},
+					],
 				},
 				{
 					path: "comment",
@@ -71,14 +89,14 @@ const router = createRouter({
 		{
 			path: "/no-permission",
 			name: "no-permission",
-			component: () => import("../views/NoPermissionView.vue"),
+			component: () => import("@/views/NoPermissionView.vue"),
 		},
 	],
 });
 
 // 创建路由守卫的独立函数
 const setupRouterGuard = () => {
-	router.beforeEach((to, from, next) => {
+	router.beforeEach(async (to, from, next) => {
 		const userStore = useUserStore();
 
 		// 公共页面直接放行
@@ -86,45 +104,31 @@ const setupRouterGuard = () => {
 			return next();
 		}
 
-		// 定义 stopWatcher，初始化为空函数防止报错
-		let stopWatcher: () => void = () => {};
-
-		// 赋值 watchEffect 的清理函数
-		stopWatcher = watchEffect(async () => {
-			if (userStore.isLoading) return; // 如果正在加载，跳过
-
-			try {
-				// 如果用户信息未加载，尝试加载
-				if (!userStore.userInfo.identity) {
-					await userStore.loadUserInfo();
-				}
-
-				// 检查登录状态
-				if (!userStore.isLogin) {
-					stopWatcher(); // 停止监听
-					next({ path: "/login", query: { redirect: to.fullPath } });
-					return;
-				}
-
-				// 检查管理员权限
-				if (
-					to.meta.requiresAdmin &&
-					![0, 1].includes(userStore.userInfo.identity as number)
-				) {
-					stopWatcher(); // 停止监听
-					next("/no-permission");
-					return;
-				}
-
-				// 所有检查通过，放行
-				stopWatcher(); // 停止监听
-				next();
-			} catch (error) {
-				console.error("路由守卫错误:", error);
-				stopWatcher(); // 停止监听
-				next({ path: "/login", query: { redirect: to.fullPath } });
+		try {
+			// 如果用户信息未加载，尝试加载
+			if (!userStore.userInfo.identity) {
+				await userStore.loadUserInfo();
 			}
-		});
+
+			// 检查登录状态
+			if (!userStore.isLogin) {
+				return next({ path: "/login", query: { redirect: to.fullPath } });
+			}
+
+			// 检查管理员权限
+			if (
+				to.meta.requiresAdmin &&
+				![0, 1].includes(userStore.userInfo.identity as number)
+			) {
+				return next("/no-permission");
+			}
+
+			// 所有检查通过，放行
+			next();
+		} catch (error) {
+			console.error("路由守卫错误:", error);
+			next({ path: "/login", query: { redirect: to.fullPath } });
+		}
 	});
 };
 

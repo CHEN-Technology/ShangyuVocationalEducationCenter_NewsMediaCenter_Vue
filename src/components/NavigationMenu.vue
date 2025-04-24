@@ -5,7 +5,7 @@
 				<NavigationMenuLink
 					@click="router.push(item.link)"
 					:class="navigationMenuTriggerStyle()"
-					class="cursor-pointer"
+					class="cursor-pointer bg-transparent"
 				>
 					{{ item.title }}
 				</NavigationMenuLink>

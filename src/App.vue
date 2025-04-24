@@ -1,6 +1,6 @@
 <template>
 	<template class="flex flex-row justify-center align-middle w-screen h-screen">
-		<NavView class="w-full fixed" />
+		<Nav />
 		<main class="w-full h-full flex justify-center align-middle">
 			<RouterView />
 		</main>
@@ -8,8 +8,10 @@
 </template>
 
 <script setup lang="ts">
-	import NavView from "./views/NavView.vue";
+	import Nav from "./components/Nav.vue";
 	import { RouterView } from "vue-router";
+
+	document.documentElement.style.overflowX = "hidden";
 </script>
 
 <style scoped></style>

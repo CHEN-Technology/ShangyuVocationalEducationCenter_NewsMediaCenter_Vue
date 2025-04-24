@@ -1,9 +1,9 @@
 <template>
 	<SidebarProvider class="min-h-screen" ref="sidebarProvider">
-		<AppSidebar class="h-[90dvh] mt-auto" />
-		<SidebarInset class="h-[90dvh] mt-auto flex justify-start">
+		<AppSidebar />
+		<SidebarInset>
 			<header
-				class="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 w-full border"
+				class="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 w-full border sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
 			>
 				<div class="flex items-center gap-4 h-4">
 					<SidebarTrigger class="ml-4 cursor-pointer" />

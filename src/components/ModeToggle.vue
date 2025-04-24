@@ -1,7 +1,7 @@
 <template>
 	<DropdownMenu>
 		<DropdownMenuTrigger as-child>
-			<Button variant="ghost">
+			<Button variant="ghost" class="cursor-pointer">
 				<Icon
 					icon="radix-icons:moon"
 					class="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
@@ -14,9 +14,15 @@
 			</Button>
 		</DropdownMenuTrigger>
 		<DropdownMenuContent align="end">
-			<DropdownMenuItem @click="mode = 'light'"> 明亮 </DropdownMenuItem>
-			<DropdownMenuItem @click="mode = 'dark'"> 暗黑 </DropdownMenuItem>
-			<DropdownMenuItem @click="mode = 'auto'"> 跟随系统 </DropdownMenuItem>
+			<DropdownMenuItem @click="mode = 'light'" class="cursor-pointer">
+				明亮
+			</DropdownMenuItem>
+			<DropdownMenuItem @click="mode = 'dark'" class="cursor-pointer">
+				暗黑
+			</DropdownMenuItem>
+			<DropdownMenuItem @click="mode = 'auto'" class="cursor-pointer">
+				跟随系统
+			</DropdownMenuItem>
 		</DropdownMenuContent>
 	</DropdownMenu>
 </template>

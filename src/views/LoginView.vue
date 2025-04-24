@@ -91,7 +91,7 @@
 			loginAndRegStore.config.title = "";
 		}
 		if (loginAndRegStore.config.isClick && isLogin.value) {
-			router.push("/");
+			router.go(-1);
 			loginAndRegStore.config.isClick = false;
 			loginAndRegStore.config.isOpen = false;
 			loginAndRegStore.config.description = "";

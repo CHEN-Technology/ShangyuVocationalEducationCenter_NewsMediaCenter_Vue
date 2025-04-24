@@ -109,7 +109,6 @@
 
 	function fileChange(event: Event) {
 		const target = event.target as HTMLInputElement;
-		console.log("文件改变", target.files);
 
 		if (target.files && target.files.length > 0) {
 			try {

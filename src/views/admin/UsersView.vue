@@ -55,9 +55,13 @@
 		<div v-if="loading" class="text-center py-8">加载中...</div>
 
 		<!-- 用户表格 -->
-		<div v-else>
-			<div class="rounded-md border">
-				<Table>
+		<Card v-else>
+			<CardHeader>
+				<CardTitle>用户列表</CardTitle>
+				<CardDescription>管理用户的信息</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<Table v-if="users.length > 0">
 					<TableHeader>
 						<TableRow>
 							<TableHead class="w-[100px]">ID</TableHead>
@@ -115,17 +119,24 @@
 						</TableRow>
 					</TableBody>
 				</Table>
-			</div>
 
-			<!-- 分页控制 -->
-			<div class="flex items-center justify-between px-2 mt-4">
-				<div class="text-sm text-muted-foreground">
-					显示 {{ (currentPage - 1) * pageSize + 1 }} 到
-					{{ Math.min(currentPage * pageSize, totalUsers) }} 条，共
-					{{ totalUsers }} 条
+				<div v-else class="flex flex-col items-center justify-center py-12">
+					<FolderOpenIcon class="h-12 w-12 text-gray-400 mb-4" />
+					<p class="text-gray-500">暂无分类数据</p>
 				</div>
-				<div class="flex items-center space-x-2">
-					<Button
+
+				<!-- 分页控制 -->
+				<div
+					v-if="users.length > 0"
+					class="flex items-center justify-between px-2 mt-4"
+				>
+					<div class="text-sm text-muted-foreground">
+						显示 {{ (currentPage - 1) * pageSize + 1 }} 到
+						{{ Math.min(currentPage * pageSize, totalUsers) }} 条，共
+						{{ totalUsers }} 条
+					</div>
+					<div class="flex items-center space-x-2">
+						<!-- <Button
 						variant="outline"
 						size="sm"
 						@click="goToPage(1)"
@@ -142,8 +153,24 @@
 						class="cursor-pointer"
 					>
 						上一页
-					</Button>
-					<Button
+					</Button> -->
+						<div class="flex items-center space-x-1">
+							<Button
+								v-for="page in Math.min(5, totalPages)"
+								:key="page"
+								variant="outline"
+								size="sm"
+								@click="handlePageChange(page)"
+								:class="{
+									'cursor-pointer': currentPage !== page,
+								}"
+								:disabled="currentPage === page"
+							>
+								{{ page }}
+							</Button>
+							<span v-if="totalPages > 5" class="px-2">...</span>
+						</div>
+						<!-- <Button
 						variant="outline"
 						size="sm"
 						@click="nextPage"
@@ -160,10 +187,11 @@
 						class="cursor-pointer"
 					>
 						末页
-					</Button>
+					</Button> -->
+					</div>
 				</div>
-			</div>
-		</div>
+			</CardContent>
+		</Card>
 
 		<!-- 添加/编辑用户对话框 -->
 		<Dialog v-model:open="isDialogOpen">
@@ -184,12 +212,12 @@
 					<div class="grid grid-cols-4 items-center gap-4">
 						<Label for="identity" class="text-right">身份</Label>
 						<Select v-model="form.identity">
-							<SelectTrigger class="col-span-3">
+							<SelectTrigger class="col-span-3 cursor-pointer">
 								<SelectValue placeholder="选择身份" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem :value="1">教师</SelectItem>
-								<SelectItem :value="2">学生</SelectItem>
+								<SelectItem :value="1" class="cursor-pointer">教师</SelectItem>
+								<SelectItem :value="2" class="cursor-pointer">学生</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
@@ -293,6 +321,13 @@
 		DialogTitle,
 	} from "@/components/ui/dialog";
 	import {
+		Card,
+		CardContent,
+		CardDescription,
+		CardHeader,
+		CardTitle,
+	} from "@/components/ui/card";
+	import {
 		DropdownMenu,
 		DropdownMenuContent,
 		DropdownMenuItem,
@@ -306,7 +341,14 @@
 		SelectTrigger,
 		SelectValue,
 	} from "@/components/ui/select";
-	import { MoreHorizontal, Pencil, Trash2, Key, Search } from "lucide-vue-next";
+	import {
+		MoreHorizontal,
+		Pencil,
+		Trash2,
+		Key,
+		Search,
+		FolderOpenIcon,
+	} from "lucide-vue-next";
 
 	// 用户类型定义
 	interface User {
@@ -355,7 +397,7 @@
 		try {
 			const params = {
 				page: currentPage.value,
-				pageSize: pageSize.value,
+				limit: pageSize.value+1,
 				search: searchQuery.value,
 				identity: filterIdentity.value,
 				excludeIdentity: 0, // 添加这个参数排除管理员
@@ -377,6 +419,11 @@
 		} finally {
 			loading.value = false;
 		}
+	};
+
+	const handlePageChange = (page: number) => {
+		currentPage.value = page;
+		fetchUsers();
 	};
 
 	// 初始化加载

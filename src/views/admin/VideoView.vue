@@ -1,10 +1,9 @@
 <template>
-	<Upload />
+	<RouterView />
 </template>
 
 <script setup lang="ts">
-	import Upload from "@/components/Upload.vue";
-	import Download from "@/components/Download.vue";
+	import { RouterView } from "vue-router";
 </script>
 
 <style scoped></style>
