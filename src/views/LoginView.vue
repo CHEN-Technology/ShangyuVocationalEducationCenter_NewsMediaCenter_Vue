@@ -32,17 +32,12 @@
 				去注册></span
 			>
 		</div>
-		<AlertDialog
-			:config="loginAndRegStore.config"
-			:sendData="loginAndRegStore.sendData"
-		/>
 	</div>
 </template>
 
 <script setup lang="ts">
 	import { AutoForm } from "@/components/ui/auto-form";
 	import { Button } from "@/components/ui/button";
-	import AlertDialog from "@/components/AlertDialog.vue";
 	import { useLoginAndRegStore } from "@/stores/LoginAndReg";
 	import { toTypedSchema } from "@vee-validate/zod";
 	import { useForm } from "vee-validate";
@@ -59,10 +54,6 @@
 	const { isLogin } = storeToRefs(userStore);
 
 	const schemaLogin = z.object({
-		identity: z
-			.enum(["管理员", "学生", "教师"])
-			.describe("身份")
-			.default("学生"),
 		username: z
 			.string({
 				required_error: "用户名是必填项",
@@ -84,18 +75,8 @@
 	});
 
 	watchEffect(() => {
-		if (isLogin.value == false) {
-			loginAndRegStore.config.isClick = false;
-			loginAndRegStore.config.isOpen = false;
-			loginAndRegStore.config.description = "";
-			loginAndRegStore.config.title = "";
-		}
-		if (loginAndRegStore.config.isClick && isLogin.value) {
-			router.go(-1);
-			loginAndRegStore.config.isClick = false;
-			loginAndRegStore.config.isOpen = false;
-			loginAndRegStore.config.description = "";
-			loginAndRegStore.config.title = "";
+		if (isLogin.value) {
+			router.push("/");
 		}
 	});
 </script>

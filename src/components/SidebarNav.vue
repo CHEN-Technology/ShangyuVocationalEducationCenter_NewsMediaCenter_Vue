@@ -11,7 +11,7 @@
 			>
 				<SidebarMenuItem>
 					<SidebarMenuButton
-						@click="router.push(item.link)"
+						@click="routerTransition(item.link)"
 						class="cursor-pointer"
 						:is-active="isActive(item.link)"
 						:tooltip="item.title"
@@ -25,7 +25,7 @@
 						class="group/collapsible-trigger mt-1 mb-1"
 					>
 						<SidebarMenuButton
-							@click="router.push(item.link)"
+							@click="routerTransition(item.link)"
 							class="cursor-pointer"
 							:is-active="isActive(item.link)"
 							:tooltip="item.title"
@@ -50,7 +50,7 @@
 									:is-active="isActive(subItem.link)"
 								>
 									<div
-										@click="router.push(subItem.link)"
+										@click="routerTransition(subItem.link)"
 										class="cursor-pointer w-full"
 										:class="{ active: isActive(subItem.link) }"
 									>
@@ -102,6 +102,20 @@
 			return true;
 		}
 	};
+
+	function routerTransition(url: string) {
+		if (!url) return;
+
+		// 检查浏览器是否支持 View Transitions API
+		if (!document.startViewTransition) {
+			router.push(url);
+			return;
+		}
+
+		document.startViewTransition(() => {
+			router.push(url);
+		});
+	}
 </script>
 
 <style scoped></style>

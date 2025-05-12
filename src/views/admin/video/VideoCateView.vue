@@ -10,10 +10,55 @@
 		</div>
 
 		<div
-			class="flex flex-col md:flex-row md:items-center justify-end gap-4 mb-6"
+			class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"
 		>
-			<div class="flex items-center gap-2">
-				<DropdownMenu v-if="selectedCategories.length > 0">
+			<div class="relative w-full md:w-1/2">
+				<Search
+					class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+				/>
+				<Input
+					placeholder="搜索视频分类..."
+					class="pl-10 w-full"
+					v-model="searchQuery"
+				/>
+			</div>
+			<div class="flex items-center gap-4 w-full md:w-auto">
+				<Select v-model="pageSize" @update:modelValue="handlePageSizeChange">
+					<SelectTrigger class="w-[120px] cursor-pointer">
+						<SelectValue placeholder="每页条数" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem :value="5" class="cursor-pointer">5条/页</SelectItem>
+						<SelectItem :value="10" class="cursor-pointer">10条/页</SelectItem>
+						<SelectItem :value="20" class="cursor-pointer">20条/页</SelectItem>
+						<SelectItem :value="50" class="cursor-pointer">50条/页</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
+		</div>
+
+		<!-- 批量操作区域 -->
+		<div
+			v-if="selectedCategories.length > 0"
+			class="mb-4 p-3 bg-accent rounded-lg"
+		>
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-2">
+					<span class="text-sm font-medium">
+						已选择 {{ selectedCategories.length }} 个视频
+					</span>
+					<Button
+						variant="ghost"
+						size="sm"
+						@click="clearSelection"
+						class="cursor-pointer hover:bg-accent-foreground/10 text-muted-foreground"
+					>
+						<X class="h-4 w-4 mr-1" />
+						清除选择
+					</Button>
+				</div>
+
+				<DropdownMenu>
 					<DropdownMenuTrigger as-child>
 						<Button variant="outline" class="cursor-pointer">
 							批量操作
@@ -46,19 +91,6 @@
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>
-			<div class="flex items-center gap-4 w-full md:w-auto">
-				<Select v-model="pageSize" @update:modelValue="handlePageSizeChange">
-					<SelectTrigger class="w-[120px]">
-						<SelectValue placeholder="每页条数" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem :value="5">5条/页</SelectItem>
-						<SelectItem :value="10">10条/页</SelectItem>
-						<SelectItem :value="20">20条/页</SelectItem>
-						<SelectItem :value="50">50条/页</SelectItem>
-					</SelectContent>
-				</Select>
-			</div>
 		</div>
 
 		<Card>
@@ -80,6 +112,7 @@
 							</TableHead>
 							<TableHead class="w-[100px]">ID</TableHead>
 							<TableHead>分类名称</TableHead>
+							<TableHead>分类路由</TableHead>
 							<TableHead>创建时间</TableHead>
 							<TableHead>排序</TableHead>
 							<TableHead>状态</TableHead>
@@ -104,6 +137,7 @@
 								</TableCell>
 								<TableCell class="font-medium">{{ category._id }}</TableCell>
 								<TableCell>{{ category.name }}</TableCell>
+								<TableCell>{{ category.value }}</TableCell>
 								<TableCell>{{ formatDate(category.createdAt) }}</TableCell>
 								<TableCell>
 									<div class="flex items-center">
@@ -171,38 +205,11 @@
 						{{ totalCategories }} 条
 					</div>
 					<div class="flex items-center space-x-2">
-						<!-- <Button
-							variant="outline"
-							size="sm"
-							@click="handlePageChange(currentPage - 1)"
-							:disabled="currentPage <= 1"
-						>
-							上一页
-						</Button> -->
-						<div class="flex items-center space-x-1">
-							<Button
-								v-for="page in Math.min(5, totalPages)"
-								:key="page"
-								variant="outline"
-								size="sm"
-								@click="handlePageChange(page)"
-								:class="{
-									'cursor-pointer': currentPage !== page,
-								}"
-								:disabled="currentPage === page"
-							>
-								{{ page }}
-							</Button>
-							<span v-if="totalPages > 5" class="px-2">...</span>
-						</div>
-						<!-- <Button
-							variant="outline"
-							size="sm"
-							@click="handlePageChange(currentPage + 1)"
-							:disabled="currentPage >= totalPages"
-						>
-							下一页
-						</Button> -->
+						<Pagination
+							:totalPages="totalPages"
+							:currentPage="currentPage"
+							:function="handlePageChange"
+						/>
 					</div>
 				</div>
 			</CardContent>
@@ -225,6 +232,17 @@
 							v-model="form.name"
 							class="col-span-3"
 							placeholder="请输入分类名称"
+							maxlength="4"
+						/>
+					</div>
+					<div class="grid grid-cols-4 items-center gap-4">
+						<Label for="path" class="text-right">分类路由</Label>
+						<Input
+							id="path"
+							v-model="form.value"
+							class="col-span-3"
+							placeholder="请输入分类路由"
+							maxlength="10"
 						/>
 					</div>
 					<div class="grid grid-cols-4 items-center gap-4">
@@ -352,17 +370,20 @@
 		MoreHorizontalIcon,
 		Pencil,
 		Trash2,
-		Loader2,
+		X,
 		ChevronDownIcon,
 		CheckCircleIcon,
 		XCircleIcon,
+		Search,
 	} from "lucide-vue-next";
 	import { toast, Toaster } from "vue-sonner";
 	import axios from "axios";
+	import Pagination from "@/components/Pagination.vue";
 
 	interface VideoCategory {
 		_id: string;
 		name: string;
+		value: string;
 		status: boolean;
 		createdAt: string;
 		order?: number;
@@ -386,6 +407,7 @@
 	const totalPages = computed(() =>
 		Math.ceil(totalCategories.value / pageSize.value)
 	);
+	const searchQuery = ref("");
 
 	const allSelected = computed({
 		get: () => {
@@ -400,6 +422,10 @@
 		},
 	});
 
+	const clearSelection = () => {
+		selectedCategories.value = [];
+	};
+
 	const isIndeterminate = computed(() => {
 		return selectedCategories.value.length > 0 && !allSelected.value;
 	});
@@ -411,6 +437,7 @@
 	// 表单数据
 	const form = ref({
 		name: "",
+		value: "",
 		status: 1,
 	});
 
@@ -422,12 +449,18 @@
 	// 获取分类列表
 	const fetchCategories = async () => {
 		try {
-			const response = await fetch(
-				`${import.meta.env.VITE_APP_URL}/video/categories?page=${
-					currentPage.value
-				}&limit=${pageSize.value}`
+			const params = {
+				page: currentPage.value,
+				limit: pageSize.value,
+				search: searchQuery.value,
+			};
+			const response = await axios.get(
+				`${import.meta.env.VITE_APP_URL}/video/categories`,
+				{
+					params,
+				}
 			);
-			const data = await response.json();
+			const data = await response.data;
 			if (data.success) {
 				categories.value = data.data.map(
 					(item: VideoCategory, index: number) => ({
@@ -445,6 +478,24 @@
 			});
 		}
 	};
+
+	// 添加防抖函数
+	const debounce = (fn: Function, delay: number) => {
+		let timer: number;
+		return (...args: any[]) => {
+			clearTimeout(timer);
+			timer = setTimeout(() => fn(...args), delay);
+		};
+	};
+
+	// 添加对 searchQuery 的 watch
+	watch(
+		searchQuery,
+		debounce(() => {
+			currentPage.value = 1; // 搜索时重置到第一页
+			fetchCategories();
+		}, 500) // 500ms 防抖延迟
+	);
 
 	const handlePageChange = (page: number) => {
 		currentPage.value = page;
@@ -480,7 +531,7 @@
 	// 打开添加对话框
 	const openAddDialog = () => {
 		isEditing.value = false;
-		form.value = { name: "", status: 1 };
+		form.value = { name: "", value: "", status: 1 };
 		isDialogOpen.value = true;
 	};
 
@@ -488,7 +539,11 @@
 	const openEditDialog = (category: VideoCategory) => {
 		isEditing.value = true;
 		currentCategory.value = category;
-		form.value = { name: category.name, status: category.status ? 1 : 0 };
+		form.value = {
+			name: category.name,
+			value: category.value,
+			status: category.status ? 1 : 0,
+		};
 		isDialogOpen.value = true;
 	};
 
@@ -497,6 +552,12 @@
 		if (!form.value.name.trim()) {
 			toast.error("错误", {
 				description: "分类名称不能为空",
+			});
+			return;
+		}
+		if (!form.value.value.trim()) {
+			toast.error("错误", {
+				description: "分类路由不能为空",
 			});
 			return;
 		}

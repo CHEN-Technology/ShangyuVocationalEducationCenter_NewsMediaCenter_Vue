@@ -1,7 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useUserStore } from "@/stores/User";
-import { watchEffect } from "vue";
-import Breadcrumb from "@/components/ui/breadcrumb/Breadcrumb.vue";
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.BASE_URL),
@@ -90,6 +88,16 @@ const router = createRouter({
 			path: "/no-permission",
 			name: "no-permission",
 			component: () => import("@/views/NoPermissionView.vue"),
+		},
+		{
+			path: "/nofound-video",
+			name: "nofound-video",
+			component: () => import("@/views/VideoNotFoundView.vue"),
+		},
+		{
+			path: "/video/:id",
+			name: "video",
+			component: () => import("@/views/VideoView.vue"),
 		},
 	],
 });

@@ -8,7 +8,11 @@
 						@click="router.push('/')"
 					>
 						<div class="tracking-widest">
-							{{ systemData?.titleAll[0].subTitle }}
+							{{
+								systemData?.system[0].title.subTitle
+									? systemData?.system[0].title.subTitle
+									: systemData?.system[0].title.title
+							}}
 						</div>
 					</div>
 				</SidebarMenuButton>

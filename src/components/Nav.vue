@@ -1,15 +1,20 @@
 <template>
 	<header class="border-b-2 w-full fixed top-0">
 		<template
-			class="flex justify-between items-center max-w-[80dvw] min-h-[10dvh] ml-auto mr-auto"
+			class="flex justify-between items-center max-w-[80dvw] h-[80px] ml-auto mr-auto"
 		>
 			<div
 				class="text-2xl font-bold text-center cursor-pointer"
 				@click="router.push('/')"
 			>
-				<div class="text-xl">{{ systemData?.titleAll[0].title }}</div>
-				<div class="tracking-widest">
-					{{ systemData?.titleAll[0].subTitle }}
+				<div class="text-xl" v-if="systemData?.system[0].title.title">
+					{{ systemData?.system[0].title.title }}
+				</div>
+				<div
+					class="tracking-widest"
+					v-if="systemData?.system[0].title.subTitle"
+				>
+					{{ systemData?.system[0].title.subTitle }}
 				</div>
 			</div>
 			<NavigationMenu class="justify-self-start mr-auto ml-10" />
@@ -43,7 +48,7 @@
 						</div>
 						<div
 							class="px-2 py-1.5 text-sm rounded hover:bg-accent hover:text-accent-foreground cursor-pointer h-10 flex flex-row justify-between leading-7"
-							@click="router.push(controlMenu.link)"
+							@click="routerTransition(controlMenu.link)"
 							v-if="userInfo.identity == 0 || userInfo.identity == 1"
 						>
 							<div class="flex flex-row gap-2 items-center">
@@ -88,22 +93,54 @@
 	const { systemData } = storeToRefs(systemDataStore);
 	const { icon } = systemDataStore;
 	const { userInfo } = storeToRefs(userStore);
-	const getSystemData = ref();
-	const controlMenu = ref();
-	const exitMenu = ref();
-
-	watch(systemData, (newData) => {
-		getSystemData.value = newData;
-		exitMenu.value = getSystemData.value?.avatarMenuAll.pop();
-		controlMenu.value = getSystemData.value?.avatarMenuAll.pop();
+	const controlMenu = ref({
+		icon: "",
+		title: "",
+		link: "",
+	});
+	const exitMenu = ref({
+		icon: "",
+		title: "",
 	});
 
 	const filteredAvatarMenu = computed(() => {
-		return getSystemData.value?.avatarMenuAll || [];
+		if (!systemData.value?.avatarMenuAll?.length) return [];
+		return systemData.value.avatarMenuAll.slice(0, -2); // 排除最后两项
 	});
+
+	// 监听 systemData 变化，但不修改原数组
+	watch(
+		systemData,
+		(newData) => {
+			if (!newData?.avatarMenuAll?.length) return;
+
+			// 使用 slice 获取最后两项，不修改原数组
+			const menuItems = newData.avatarMenuAll;
+			if (menuItems.length >= 2) {
+				exitMenu.value = menuItems[menuItems.length - 1] || exitMenu.value;
+				controlMenu.value =
+					menuItems[menuItems.length - 2] || controlMenu.value;
+			}
+		},
+		{ immediate: true }
+	);
 
 	function handleLogout() {
 		userStore.logout();
+	}
+
+	function routerTransition(url: string) {
+		if (!url) return;
+
+		// 检查浏览器是否支持 View Transitions API
+		if (!document.startViewTransition) {
+			router.push(url);
+			return;
+		}
+
+		document.startViewTransition(() => {
+			router.push(url);
+		});
 	}
 </script>
 

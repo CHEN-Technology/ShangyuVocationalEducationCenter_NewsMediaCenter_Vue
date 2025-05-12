@@ -1,0 +1,323 @@
+/* Base Video.js theme with shadcn design language and transitions */
+.video-js {
+	/* ShadCN inspired color variables */
+	--video-js-primary: hsl(222.2 47.4% 11.2%);
+	--video-js-primary-foreground: hsl(210 40% 98%);
+	--video-js-secondary: hsl(210 40% 96.1%);
+	--video-js-secondary-foreground: hsl(222.2 47.4% 11.2%);
+	--video-js-muted: hsl(210 40% 96.1%);
+	--video-js-muted-foreground: hsl(215.4 16.3% 46.9%);
+	--video-js-accent: hsl(210 40% 96.1%);
+	--video-js-accent-foreground: hsl(222.2 47.4% 11.2%);
+	--video-js-border: hsl(214.3 31.8% 91.4%);
+	--video-js-radius: 0.5rem;
+	--video-js-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+	font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+		"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	border-radius: var(--video-js-radius);
+	overflow: hidden;
+	box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+	transition: var(--video-js-transition);
+}
+
+/* Fade-in animation for player container */
+.video-player-container {
+	animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* Big play button styling with bounce animation */
+.vjs-big-play-button {
+	background-color: hsla(222.2, 47.4%, 11.2%, 0.8);
+	border: none;
+	border-radius: 50%;
+	width: 4rem;
+	height: 4rem;
+	line-height: 4rem;
+	font-size: 2.5rem;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	transition: var(--video-js-transition);
+	opacity: 0.9;
+}
+
+.vjs-big-play-button:hover {
+	background-color: var(--video-js-primary);
+	transform: translate(-50%, -50%) scale(1.1);
+	opacity: 1;
+}
+
+.vjs-has-started .vjs-big-play-button {
+	opacity: 0;
+	transform: translate(-50%, -50%) scale(0.8);
+	pointer-events: none;
+	transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Control bar styling */
+.vjs-control-bar {
+	background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+	height: 3.5rem;
+	padding: 0 1rem;
+	color: var(--video-js-primary-foreground);
+	transform: translateY(100%);
+	opacity: 0;
+	transition: var(--video-js-transition);
+}
+
+.vjs-has-started .vjs-control-bar {
+	transform: translateY(0);
+	opacity: 1;
+}
+
+.vjs-user-inactive.vjs-playing .vjs-control-bar {
+	transform: translateY(100%);
+	opacity: 0;
+}
+
+/* Button styling */
+.vjs-button {
+	color: var(--video-js-primary-foreground);
+	transition: var(--video-js-transition);
+	width: 2.5rem;
+	height: 2.5rem;
+	transform: scale(1);
+}
+
+.vjs-button:hover {
+	color: white;
+	transform: scale(1.1);
+}
+
+/* Play/pause button animation */
+.vjs-play-control.vjs-playing .vjs-icon-placeholder:before {
+	animation: pulse 0.5s ease;
+}
+
+@keyframes pulse {
+	0% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.2);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+/* Progress bar styling */
+.vjs-progress-holder {
+	height: 0.25rem;
+	margin: 0 0.5rem;
+	transition: height 0.2s ease;
+}
+
+.vjs-progress-holder:hover {
+	height: 0.375rem;
+}
+
+.vjs-play-progress {
+	background-color: var(--video-js-primary);
+	transition: width 0.1s linear;
+}
+
+.vjs-load-progress {
+	background-color: var(--video-js-muted-foreground);
+	transition: width 0.3s ease;
+}
+
+.vjs-load-progress div {
+	background-color: var(--video-js-muted);
+	transition: width 0.3s ease;
+}
+
+/* Slider styling */
+.vjs-slider {
+	background-color: rgba(255, 255, 255, 0.2);
+	border-radius: var(--video-js-radius);
+	transition: background-color 0.2s ease;
+}
+
+.vjs-slider:hover {
+	background-color: rgba(255, 255, 255, 0.3);
+}
+
+.vjs-slider-bar {
+	background-color: var(--video-js-primary);
+	transition: width 0.1s linear, height 0.2s ease;
+}
+
+.vjs-volume-level {
+	background-color: var(--video-js-primary);
+	transition: width 0.1s linear;
+}
+
+/* Live UI styling */
+.vjs-live-display {
+	background-color: hsl(0, 84.2%, 60.2%);
+	color: white;
+	padding: 0.25rem 0.5rem;
+	border-radius: var(--video-js-radius);
+	font-weight: 500;
+	font-size: 0.875rem;
+	animation: pulseLive 2s infinite;
+}
+
+@keyframes pulseLive {
+	0% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.7;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+
+/* Tooltip styling */
+.vjs-mouse-display .vjs-time-tooltip {
+	background-color: var(--video-js-primary);
+	color: var(--video-js-primary-foreground);
+	padding: 0.25rem 0.5rem;
+	border-radius: var(--video-js-radius);
+	font-size: 0.875rem;
+	opacity: 0;
+	transform: translateY(5px);
+	transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.vjs-progress-control:hover .vjs-time-tooltip {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+/* Loading spinner */
+.vjs-loading-spinner {
+	border-color: var(--video-js-primary-foreground);
+	border-top-color: var(--video-js-primary);
+	animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+/* Error display */
+.vjs-error-display {
+	background-color: hsl(0, 84.2%, 60.2%);
+	color: white;
+	padding: 1rem;
+	border-radius: var(--video-js-radius);
+	animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+	transform: translate3d(0, 0, 0);
+}
+
+@keyframes shake {
+	10%,
+	90% {
+		transform: translate3d(-1px, 0, 0);
+	}
+	20%,
+	80% {
+		transform: translate3d(2px, 0, 0);
+	}
+	30%,
+	50%,
+	70% {
+		transform: translate3d(-4px, 0, 0);
+	}
+	40%,
+	60% {
+		transform: translate3d(4px, 0, 0);
+	}
+}
+
+/* Fullscreen mode */
+.video-js.vjs-fullscreen {
+	border-radius: 0;
+	transition: border-radius 0.3s ease;
+}
+
+/* Menu items */
+.vjs-menu-item {
+	transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.vjs-menu-item:hover {
+	background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+	.vjs-control-bar {
+		height: 3rem;
+		padding: 0 0.5rem;
+		transition: height 0.3s ease, padding 0.3s ease;
+	}
+
+	.vjs-button {
+		width: 2rem;
+		height: 2rem;
+		transition: width 0.3s ease, height 0.3s ease;
+	}
+
+	.vjs-big-play-button {
+		width: 3rem;
+		height: 3rem;
+		line-height: 3rem;
+		font-size: 2rem;
+		transition: all 0.3s ease;
+	}
+}
+
+/* Additional UI tweaks */
+.vjs-paused .vjs-big-play-button,
+.vjs-paused.vjs-has-started .vjs-big-play-button {
+	display: block !important;
+}
+
+.video-js .vjs-time-control {
+	display: block !important;
+}
+
+.video-js .vjs-remaining-time {
+	display: none !important;
+}
+
+/* Quality selector improvements */
+.vjs-quality-selector .vjs-menu-button-popup .vjs-menu {
+	width: auto;
+	left: -5em;
+}
+
+.vjs-quality-selector .vjs-menu li {
+	text-transform: none;
+	font-size: 0.9em;
+	padding: 0.5em 1em;
+}
+
+/* Subtitles/captions button */
+.vjs-text-track-display {
+	font-family: ui-sans-serif, system-ui;
+	font-size: 1.1em;
+	line-height: 1.4;
+}

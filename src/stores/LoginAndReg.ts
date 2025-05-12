@@ -42,9 +42,6 @@ export const useLoginAndRegStore = defineStore("loginAndReg", () => {
 					password: values.password,
 				})
 				.then((res) => {
-					config.value.title = res.data.status;
-					config.value.description = res.data.message;
-					config.value.isOpen = true;
 					loadUserInfo();
 				})
 				.catch((err) => {

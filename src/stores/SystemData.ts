@@ -14,12 +14,14 @@ import {
 } from "lucide-vue-next";
 
 interface SystemData {
-	titleAll: [
+	system: [
 		{
 			_id: string;
-			title: string;
-			subTitle: string;
-			link: string;
+			title: {
+				title: string;
+				subTitle: string;
+				link: string;
+			};
 		}
 	];
 	navMenu: [

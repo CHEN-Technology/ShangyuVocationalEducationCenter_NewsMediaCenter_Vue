@@ -1,13 +1,11 @@
 import { defineStore } from "pinia";
 import { onMounted, ref } from "vue";
 import axios from "axios";
-import { useRouter } from "vue-router";
 
 export const useUserStore = defineStore("user", () => {
 	const userInfo = ref<{ identity?: number } & Record<string, any>>({});
 	const isLogin = ref(false);
 	const isLoading = ref(false);
-	const router = useRouter();
 
 	const clearUserState = () => {
 		isLogin.value = false;
@@ -41,11 +39,9 @@ export const useUserStore = defineStore("user", () => {
 		try {
 			await axios.post(`${import.meta.env.VITE_APP_URL}/logout`);
 			clearUserState();
-			router.push("/login");
 		} catch (error: any) {
 			console.error("注销错误:", error);
 			clearUserState();
-			router.push("/login");
 		} finally {
 			isLoading.value = false;
 		}

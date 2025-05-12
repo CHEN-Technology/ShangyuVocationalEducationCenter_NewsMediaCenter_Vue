@@ -18,31 +18,76 @@
 					placeholder="搜索用户名..."
 					class="pl-10 w-full"
 					v-model="searchQuery"
-					@keyup.enter="handleSearch"
 				/>
 			</div>
 			<div class="flex items-center gap-4 w-full md:w-auto">
 				<Select v-model="filterIdentity" @update:modelValue="fetchUsers">
-					<SelectTrigger class="w-[150px]">
+					<SelectTrigger class="w-[150px] cursor-pointer">
 						<SelectValue placeholder="所有身份" />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem :value="null">所有身份</SelectItem>
-						<SelectItem :value="1">教师</SelectItem>
-						<SelectItem :value="2">学生</SelectItem>
+						<SelectItem value="all" class="cursor-pointer">所有身份</SelectItem>
+						<SelectItem :value="1" class="cursor-pointer">教师</SelectItem>
+						<SelectItem :value="2" class="cursor-pointer">学生</SelectItem>
 					</SelectContent>
 				</Select>
 				<Select v-model="pageSize" @update:modelValue="handlePageSizeChange">
-					<SelectTrigger class="w-[120px]">
+					<SelectTrigger class="w-[120px] cursor-pointer">
 						<SelectValue placeholder="每页条数" />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem :value="5">5条/页</SelectItem>
-						<SelectItem :value="10">10条/页</SelectItem>
-						<SelectItem :value="20">20条/页</SelectItem>
-						<SelectItem :value="50">50条/页</SelectItem>
+						<SelectItem :value="5" class="cursor-pointer">5条/页</SelectItem>
+						<SelectItem :value="10" class="cursor-pointer">10条/页</SelectItem>
+						<SelectItem :value="20" class="cursor-pointer">20条/页</SelectItem>
+						<SelectItem :value="50" class="cursor-pointer">50条/页</SelectItem>
 					</SelectContent>
 				</Select>
+			</div>
+		</div>
+
+		<!-- 批量操作区域 -->
+		<div v-if="selectedUsers.length > 0" class="mb-4 p-3 bg-accent rounded-lg">
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-2">
+					<span class="text-sm font-medium">
+						已选择 {{ selectedUsers.length }} 个用户
+					</span>
+					<Button
+						variant="ghost"
+						size="sm"
+						@click="clearSelection"
+						class="cursor-pointer hover:bg-accent-foreground/10 text-muted-foreground"
+					>
+						<X class="h-4 w-4 mr-1" />
+						清除选择
+					</Button>
+				</div>
+
+				<DropdownMenu>
+					<DropdownMenuTrigger as-child>
+						<Button variant="outline" class="cursor-pointer">
+							批量操作
+							<ChevronDownIcon class="ml-2 h-4 w-4" />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent>
+						<DropdownMenuItem
+							@click="openBatchEditIdentityDialog"
+							class="cursor-pointer"
+						>
+							<UserCog class="mr-2 h-4 w-4" />
+							修改身份
+						</DropdownMenuItem>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							@click="batchDeleteSelected"
+							class="text-red-600 cursor-pointer"
+						>
+							<Trash2 class="mr-2 h-4 w-4" />
+							删除选中
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
 			</div>
 		</div>
 
@@ -64,6 +109,13 @@
 				<Table v-if="users.length > 0">
 					<TableHeader>
 						<TableRow>
+							<TableHead class="w-[50px]">
+								<Checkbox
+									v-model="allSelected"
+									:indeterminate="isIndeterminate"
+									class="cursor-pointer"
+								/>
+							</TableHead>
 							<TableHead class="w-[100px]">ID</TableHead>
 							<TableHead>用户名</TableHead>
 							<TableHead>身份</TableHead>
@@ -73,7 +125,14 @@
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						<TableRow v-for="user in users" :key="user.id">
+						<TableRow v-for="user in users" :key="user.id"
+							><TableCell>
+								<Checkbox
+									:model-value="isUserSelected(user.id)"
+									@update:model-value="toggleUserSelection(user.id)"
+									class="cursor-pointer"
+								/>
+							</TableCell>
 							<TableCell class="font-medium">{{ user.id }}</TableCell>
 							<TableCell>{{ user.username }}</TableCell>
 							<TableCell>
@@ -122,7 +181,7 @@
 
 				<div v-else class="flex flex-col items-center justify-center py-12">
 					<FolderOpenIcon class="h-12 w-12 text-gray-400 mb-4" />
-					<p class="text-gray-500">暂无分类数据</p>
+					<p class="text-gray-500">暂无用户数据</p>
 				</div>
 
 				<!-- 分页控制 -->
@@ -136,58 +195,11 @@
 						{{ totalUsers }} 条
 					</div>
 					<div class="flex items-center space-x-2">
-						<!-- <Button
-						variant="outline"
-						size="sm"
-						@click="goToPage(1)"
-						:disabled="currentPage === 1"
-						class="cursor-pointer"
-					>
-						首页
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						@click="prevPage"
-						:disabled="currentPage === 1"
-						class="cursor-pointer"
-					>
-						上一页
-					</Button> -->
-						<div class="flex items-center space-x-1">
-							<Button
-								v-for="page in Math.min(5, totalPages)"
-								:key="page"
-								variant="outline"
-								size="sm"
-								@click="handlePageChange(page)"
-								:class="{
-									'cursor-pointer': currentPage !== page,
-								}"
-								:disabled="currentPage === page"
-							>
-								{{ page }}
-							</Button>
-							<span v-if="totalPages > 5" class="px-2">...</span>
-						</div>
-						<!-- <Button
-						variant="outline"
-						size="sm"
-						@click="nextPage"
-						:disabled="currentPage * pageSize >= totalUsers"
-						class="cursor-pointer"
-					>
-						下一页
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						@click="goToPage(totalPages)"
-						:disabled="currentPage === totalPages"
-						class="cursor-pointer"
-					>
-						末页
-					</Button> -->
+						<Pagination
+							:totalPages="totalPages"
+							:currentPage="currentPage"
+							:function="handlePageChange"
+						/>
 					</div>
 				</div>
 			</CardContent>
@@ -291,6 +303,64 @@
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
+
+		<!-- 批量修改身份对话框 -->
+		<Dialog v-model:open="isBatchEditIdentityDialogOpen">
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>批量修改身份</DialogTitle>
+					<DialogDescription>
+						您将为 {{ selectedUsers.length }} 个用户修改身份
+					</DialogDescription>
+				</DialogHeader>
+				<div class="grid gap-4 py-4">
+					<div class="grid grid-cols-4 items-center gap-4">
+						<Label for="batch-identity" class="text-right">新身份</Label>
+						<Select v-model="batchEditIdentity">
+							<SelectTrigger class="col-span-3 cursor-pointer">
+								<SelectValue placeholder="选择新的用户身份" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem :value="1" class="cursor-pointer">教师</SelectItem>
+								<SelectItem :value="2" class="cursor-pointer">学生</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+				</div>
+				<DialogFooter>
+					<Button
+						variant="outline"
+						@click="isBatchEditIdentityDialogOpen = false"
+					>
+						取消
+					</Button>
+					<Button type="submit" @click="confirmBatchEditIdentity">
+						确认修改
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+
+		<!-- 批量删除确认对话框 -->
+		<Dialog v-model:open="isBatchConfirmDialogOpen">
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>确认批量删除</DialogTitle>
+					<DialogDescription>
+						您确定要删除选中的
+						{{ selectedUsers.length }} 个用户吗？此操作不可撤销。
+					</DialogDescription>
+				</DialogHeader>
+				<DialogFooter>
+					<Button variant="outline" @click="isBatchConfirmDialogOpen = false"
+						>取消</Button
+					>
+					<Button variant="destructive" @click="confirmBatchDelete"
+						>确认删除</Button
+					>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	</div>
 	<Toaster position="top-center" richColors />
 </template>
@@ -334,6 +404,7 @@
 		DropdownMenuTrigger,
 		DropdownMenuSeparator,
 	} from "@/components/ui/dropdown-menu";
+	import { Checkbox } from "@/components/ui/checkbox";
 	import {
 		Select,
 		SelectContent,
@@ -348,7 +419,12 @@
 		Key,
 		Search,
 		FolderOpenIcon,
+		User,
+		X,
+		ChevronDownIcon,
+		UserCog,
 	} from "lucide-vue-next";
+	import Pagination from "@/components/Pagination.vue";
 
 	// 用户类型定义
 	interface User {
@@ -366,11 +442,15 @@
 	const loading = ref(false);
 	const error = ref<string | null>(null);
 	const searchQuery = ref("");
-	const filterIdentity = ref<number | null>(null);
+	const filterIdentity = ref<number | string>("all");
 	const currentPage = ref(1);
 	const pageSize = ref(10);
 	const totalUsers = ref(0);
 	const selectedUserName = ref("");
+	const isBatchConfirmDialogOpen = ref(false);
+	const selectedUsers = ref<string[]>([]);
+	const isBatchEditIdentityDialogOpen = ref(false);
+	const batchEditIdentity = ref<number | null>(null);
 
 	// 表单状态
 	const form = reactive({
@@ -390,6 +470,194 @@
 		Math.ceil(totalUsers.value / pageSize.value)
 	);
 
+	const allSelected = computed({
+		get: () =>
+			users.value.length > 0 &&
+			selectedUsers.value.length === users.value.length,
+		set: (value) => {
+			selectedUsers.value = value ? users.value.map((u) => u.id) : [];
+		},
+	});
+
+	const isIndeterminate = computed(() => {
+		return selectedUsers.value.length > 0 && !allSelected.value;
+	});
+
+	const isUserSelected = (id: string) => selectedUsers.value.includes(id);
+
+	const toggleUserSelection = (id: string) => {
+		const index = selectedUsers.value.indexOf(id);
+		if (index === -1) {
+			selectedUsers.value.push(id);
+		} else {
+			selectedUsers.value.splice(index, 1);
+		}
+	};
+
+	const clearSelection = () => {
+		selectedUsers.value = [];
+	};
+
+	// 批量删除
+	const batchDeleteSelected = () => {
+		if (selectedUsers.value.length === 0) {
+			toast.warning("提示", {
+				description: "请至少选择一个用户",
+			});
+			return;
+		}
+		isBatchConfirmDialogOpen.value = true;
+	};
+
+	// 修改批量删除确认方法
+	const confirmBatchDelete = async () => {
+		try {
+			const toastId = toast.loading(
+				`正在删除 ${selectedUsers.value.length} 个用户...`
+			);
+
+			let successCount = 0;
+			const errors: string[] = [];
+
+			// 添加延迟函数
+			const delay = (ms: number) =>
+				new Promise((resolve) => setTimeout(resolve, ms));
+
+			for (const [index, userId] of selectedUsers.value.entries()) {
+				try {
+					// 每隔300毫秒发送一个请求（避免服务器压力）
+					if (index > 0) await delay(300);
+
+					await axios.delete(`${import.meta.env.VITE_APP_URL}/users/delete`, {
+						data: { id: userId },
+					});
+					successCount++;
+				} catch (error: any) {
+					const username =
+						users.value.find((u) => u.id === userId)?.username || userId;
+					errors.push(
+						`用户 ${username} 删除失败: ${error.response?.data?.message || error.message}`
+					);
+				}
+			}
+
+			// 显示结果
+			if (errors.length > 0) {
+				toast.error(
+					`批量删除完成（成功 ${successCount} 个，失败 ${errors.length} 个）`,
+					{
+						description:
+							errors.slice(0, 3).join("\n") +
+							(errors.length > 3 ? `\n...等共 ${errors.length} 个错误` : ""),
+						id: toastId,
+						duration: 10000,
+					}
+				);
+			} else {
+				toast.success(`成功删除 ${successCount} 个用户`, {
+					id: toastId,
+				});
+			}
+
+			// 重置状态
+			isBatchConfirmDialogOpen.value = false;
+			selectedUsers.value = [];
+
+			// 如果删除的是当前页的所有数据且不是第一页，则返回上一页
+			if (users.value.length === successCount && currentPage.value > 1) {
+				currentPage.value -= 1;
+			}
+
+			// 刷新数据
+			fetchUsers();
+		} catch (error: any) {
+			toast.error("批量删除过程中出错", {
+				description: error.message,
+			});
+		}
+	};
+
+	// 批量修改身份
+	const openBatchEditIdentityDialog = () => {
+		if (selectedUsers.value.length === 0) {
+			toast.warning("提示", {
+				description: "请至少选择一个用户",
+			});
+			return;
+		}
+		isBatchEditIdentityDialogOpen.value = true;
+	};
+
+	const confirmBatchEditIdentity = async () => {
+		if (!batchEditIdentity.value) {
+			toast.warning("提示", {
+				description: "请选择身份",
+			});
+			return;
+		}
+
+		try {
+			const toastId = toast.loading(
+				`正在批量修改 ${selectedUsers.value.length} 个用户的身份...`
+			);
+
+			// 循环发送单个请求
+			let successCount = 0;
+			const errors: string[] = [];
+
+			const delay = (ms: number) =>
+				new Promise((resolve) => setTimeout(resolve, ms));
+
+			for (const userId of selectedUsers.value) {
+				try {
+					if (index > 0) await delay(300);
+
+					await axios.put(`${import.meta.env.VITE_APP_URL}/users/update`, {
+						id: userId,
+						identity: batchEditIdentity.value,
+						username: users.value.find((u) => u.id === userId)?.username || "", // 保持username不变
+					});
+					successCount++;
+				} catch (error: any) {
+					const username =
+						users.value.find((u) => u.id === userId)?.username || userId;
+					errors.push(
+						`用户 ${username} 更新失败: ${error.response?.data?.message || error.message}`
+					);
+				}
+			}
+
+			// 显示结果
+			if (errors.length > 0) {
+				toast.error(
+					`批量修改完成（成功 ${successCount} 个，失败 ${errors.length} 个）`,
+					{
+						description: errors.join("\n"),
+						id: toastId,
+						duration: 10000, // 延长显示时间
+					}
+				);
+			} else {
+				toast.success(`成功修改 ${successCount} 个用户的身份`, {
+					id: toastId,
+				});
+			}
+
+			// 重置状态
+			isBatchEditIdentityDialogOpen.value = false;
+			batchEditIdentity.value = null;
+			selectedUsers.value = [];
+
+			// 刷新数据
+			fetchUsers();
+		} catch (error: any) {
+			toast.error("批量操作出错", {
+				description: error.message,
+				id: toastId,
+			});
+		}
+	};
+
 	// 获取用户列表
 	const fetchUsers = async () => {
 		loading.value = true;
@@ -397,9 +665,10 @@
 		try {
 			const params = {
 				page: currentPage.value,
-				limit: pageSize.value+1,
+				limit: pageSize.value + 1,
 				search: searchQuery.value,
-				identity: filterIdentity.value,
+				identity:
+					filterIdentity.value === "all" ? undefined : filterIdentity.value,
 				excludeIdentity: 0, // 添加这个参数排除管理员
 			};
 
@@ -431,31 +700,23 @@
 		fetchUsers();
 	});
 
-	// 搜索处理
-	const handleSearch = () => {
-		currentPage.value = 1;
-		fetchUsers();
+	// 添加防抖函数
+	const debounce = (fn: Function, delay: number) => {
+		let timer: number;
+		return (...args: any[]) => {
+			clearTimeout(timer);
+			timer = setTimeout(() => fn(...args), delay);
+		};
 	};
 
-	// 分页控制
-	const nextPage = () => {
-		if (currentPage.value < totalPages.value) {
-			currentPage.value++;
+	// 添加对 searchQuery 的 watch
+	watch(
+		searchQuery,
+		debounce(() => {
+			currentPage.value = 1; // 搜索时重置到第一页
 			fetchUsers();
-		}
-	};
-
-	const prevPage = () => {
-		if (currentPage.value > 1) {
-			currentPage.value--;
-			fetchUsers();
-		}
-	};
-
-	const goToPage = (page: number) => {
-		currentPage.value = page;
-		fetchUsers();
-	};
+		}, 500) // 500ms 防抖延迟
+	);
 
 	const handlePageSizeChange = () => {
 		currentPage.value = 1;
@@ -499,7 +760,6 @@
 				id: currentUserId.value,
 			});
 			toast.success(`用户 "${selectedUserName.value}" 的密码已重置为 123456`);
-			await invalidateUserToken(currentUserId.value);
 			isResetPasswordDialogOpen.value = false;
 			fetchUsers();
 		} catch (err) {
@@ -523,7 +783,6 @@
 					id: currentUserId.value,
 				});
 				toast.success("用户信息已更新");
-				await invalidateUserToken(currentUserId.value);
 			} else {
 				// 添加用户
 				if (!form.password) {
@@ -612,27 +871,10 @@
 		const date = new Date(dateString);
 		return date.toLocaleString();
 	};
-
-	const invalidateUserToken = async (userId: string) => {
-		try {
-			await axios.post(
-				`${import.meta.env.VITE_APP_URL}/auth/invalidate-token`,
-				{
-					userId,
-				}
-			);
-		} catch (err) {
-			console.error("使令牌失效失败:", err);
-			// 可以选择不显示错误，因为主要操作已经成功
-		}
-	};
-
-	const debouncedSearch = debounce(() => {
-		handleSearch();
-	}, 500); // 500毫秒延迟
-
-	// 监听 searchQuery 的变化
-	watch(searchQuery, () => {
-		debouncedSearch();
-	});
 </script>
+
+<style scoped>
+	.container {
+		max-width: 1200px;
+	}
+</style>
