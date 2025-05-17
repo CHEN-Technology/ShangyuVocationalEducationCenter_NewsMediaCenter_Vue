@@ -282,10 +282,18 @@
 					</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>
-					<Button variant="outline" @click="isDeleteDialogOpen = false"
+					<Button
+						variant="outline"
+						@click="isDeleteDialogOpen = false"
+						class="cursor-pointer"
 						>取消</Button
 					>
-					<Button variant="destructive" @click="confirmDelete">确认删除</Button>
+					<Button
+						variant="destructive"
+						@click="confirmDelete"
+						class="cursor-pointer"
+						>确认删除</Button
+					>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

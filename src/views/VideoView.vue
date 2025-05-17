@@ -109,6 +109,7 @@
 <script setup>
 	import { ref, computed, onMounted } from "vue";
 	import { useRoute, useRouter } from "vue-router";
+	import axios from "axios";
 	import VideoPlayer from "../components/VideoPlayer.vue";
 
 	const route = useRoute();
@@ -161,7 +162,10 @@
 			const videoId = route.params.id;
 
 			if (!videoId) {
-				router.push("/nofound-video");
+				router.push({
+					path: "/nofound-video",
+					query: { redirect: route.fullPath },
+				});
 				return;
 			}
 
@@ -170,14 +174,20 @@
 			);
 
 			if (response.status === 404) {
-				router.push("/nofound-video");
+				router.push({
+					path: "/nofound-video",
+					query: { redirect: route.fullPath },
+				});
 				return;
 			}
 
 			const data = await response.json();
 
 			if (!data.filePath || !data.filePath.length) {
-				router.push("/nofound-video");
+				router.push({
+					path: "/nofound-video",
+					query: { redirect: route.fullPath },
+				});
 				return;
 			}
 
@@ -195,19 +205,31 @@
 				try {
 					const streamCheck = await fetch(firstVideoUrl, { method: "HEAD" });
 					if (!streamCheck.ok) {
-						router.push("/nofound-video");
+						router.push({
+							path: "/nofound-video",
+							query: { redirect: route.fullPath },
+						});
 						return;
 					}
+					axios.post(
+						`${import.meta.env.VITE_APP_URL}/video/updateHits/${route.params.id}`
+					);
 				} catch (err) {
 					console.error("视频流检查失败:", err);
-					router.push("/nofound-video");
+					router.push({
+						path: "/nofound-video",
+						query: { redirect: route.fullPath },
+					});
 					return;
 				}
 			}
 		} catch (err) {
 			error.value = err.message || "获取视频数据时出错";
 			console.error("获取视频数据失败:", err);
-			router.push("/nofound-video");
+			router.push({
+				path: "/nofound-video",
+				query: { redirect: route.fullPath },
+			});
 		} finally {
 			loading.value = false;
 		}
@@ -221,7 +243,9 @@
 <style scoped>
 	.fade-enter-active,
 	.fade-leave-active {
-		transition: opacity 0.2s ease, transform 0.2s ease;
+		transition:
+			opacity 0.2s ease,
+			transform 0.2s ease;
 	}
 
 	.fade-enter-from,

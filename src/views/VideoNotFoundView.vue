@@ -51,8 +51,8 @@
 	</div>
 </template>
 
-<script setup>
-	import { useRouter } from "vue-router";
+<script setup lang="ts">
+	import { useRouter, useRoute } from "vue-router";
 	import {
 		Card,
 		CardHeader,
@@ -64,15 +64,43 @@
 	import { Button } from "@/components/ui/button";
 	import { VideoOff } from "lucide-vue-next";
 
+	const route = useRoute();
 	const router = useRouter();
 
 	const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
 
 	const goBack = () => {
-		router.go(-1);
+		window.close();
 	};
 
 	const goHome = () => {
-		router.push("/");
+		routerTransition("/");
 	};
+
+	function routerTransition(url: string) {
+		if (!url) return;
+
+		// 检查浏览器是否支持 View Transitions API
+		if (!document.startViewTransition) {
+			router.push(url);
+			return;
+		}
+
+		document.startViewTransition(() => {
+			router.push(url);
+		});
+	}
+	function routerTransitionGo(url: number) {
+		if (!url) return;
+
+		// 检查浏览器是否支持 View Transitions API
+		if (!document.startViewTransition) {
+			router.go(url);
+			return;
+		}
+
+		document.startViewTransition(() => {
+			router.go(url);
+		});
+	}
 </script>

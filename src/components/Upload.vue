@@ -192,9 +192,21 @@
 				<RefreshCw class="w-4 h-4 mr-1" />
 				重新提取
 			</Button>
+			<ToggleGroup
+				v-model="useAutoFrames"
+				type="single"
+				class="border rounded-md"
+			>
+				<ToggleGroupItem value="true" class="px-3 py-1 text-sm">
+					自动截取
+				</ToggleGroupItem>
+				<ToggleGroupItem value="false" class="px-3 py-1 text-sm">
+					上传封面
+				</ToggleGroupItem>
+			</ToggleGroup>
 		</div>
 
-		<div v-if="selectedFile" class="space-y-4">
+		<div v-if="useAutoFrames == 'true' && selectedFile" class="space-y-4">
 			<div class="bg-accent/30 rounded-lg p-4">
 				<div class="relative aspect-video w-full">
 					<img
@@ -303,15 +315,73 @@
 			</div>
 		</div>
 
-		<div v-else class="bg-accent/30 rounded-lg p-8 text-center">
+		<div v-if="!selectedFile" class="bg-accent/30 rounded-lg p-8 text-center">
 			<p class="text-sm text-muted-foreground">请先上传视频以选择封面</p>
 		</div>
 
 		<div v-if="isEdge" class="mt-4 p-4 bg-warning/20 rounded-lg">
 			<p class="text-sm text-warning-foreground flex items-center gap-2">
 				<Info class="w-4 h-4" />
-				<span>Edge用户请确保已安装扩展并重启浏览器</span>
+				<span>Edge用户上传HEVC编码的视频请确保已安装扩展并重启浏览器</span>
 			</p>
+		</div>
+
+		<!-- 上传封面图片的区域 -->
+		<div v-if="useAutoFrames === 'false'" class="space-y-4">
+			<div
+				class="border-2 border-dashed border-border rounded-lg p-6 text-center transition-colors hover:border-primary hover:bg-accent/50"
+				@dragover.prevent="coverDragOver = true"
+				@dragleave="coverDragOver = false"
+				@drop.prevent="handleCoverDrop"
+				:class="{ 'border-primary bg-accent/30': coverDragOver }"
+			>
+				<Input
+					id="cover"
+					type="file"
+					accept="image/*"
+					@change="coverFileChange"
+					class="hidden"
+				/>
+				<Label
+					for="cover"
+					class="cursor-pointer flex flex-col items-center justify-center space-y-3"
+				>
+					<Upload class="w-10 h-10 text-muted-foreground" />
+					<div>
+						<p class="text-sm font-medium">
+							<span class="text-primary">点击上传</span> 或拖拽图片到此处
+						</p>
+						<div class="text-xs text-muted-foreground mt-1">
+							支持 JPG, PNG 等格式 (建议尺寸: 1280×720)
+						</div>
+					</div>
+				</Label>
+			</div>
+
+			<!-- 显示已上传的封面 -->
+			<div v-if="customCoverFile" class="bg-accent/30 rounded-lg p-4">
+				<div class="relative aspect-video w-full">
+					<img
+						:src="customCoverUrl"
+						class="w-full h-full object-contain rounded-lg"
+					/>
+				</div>
+				<div class="flex justify-end mt-2">
+					<Button
+						variant="ghost"
+						size="sm"
+						@click="removeCustomCover"
+						class="text-destructive"
+					>
+						<Trash2 class="w-4 h-4 mr-1" />
+						移除封面
+					</Button>
+				</div>
+			</div>
+		</div>
+
+		<div v-if="!selectedFile" class="bg-accent/30 rounded-lg p-8 text-center">
+			<p class="text-sm text-muted-foreground">请先上传视频</p>
 		</div>
 	</div>
 	<Toaster position="top-center" richColors />
@@ -367,6 +437,7 @@
 	import pLimit from "p-limit";
 	import { captureFrame } from "@/utils/captureFrame";
 	import { useUserStore } from "@/stores/User";
+	import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 	interface Frame {
 		url: string;
@@ -402,6 +473,10 @@
 	const extractingFramesComplete = ref(false);
 	const frameExtractionProgress = ref(0);
 	const totalFramesToExtract = ref(0);
+	const useAutoFrames = ref("true"); // 默认使用自动截取
+	const coverDragOver = ref(false);
+	const customCoverFile = ref<File | null>(null);
+	const customCoverUrl = ref("");
 
 	// 视频分类选项
 	const categories: Category[] = [];
@@ -667,6 +742,39 @@
 		}
 	}
 
+	// 处理封面文件上传
+	const coverFileChange = (event: Event) => {
+		const target = event.target as HTMLInputElement;
+		if (target.files && target.files.length > 0) {
+			handleCoverFile(target.files[0]);
+		}
+	};
+
+	// 处理封面拖放
+	const handleCoverDrop = (event: DragEvent) => {
+		coverDragOver.value = false;
+		if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+			handleCoverFile(event.dataTransfer.files[0]);
+		}
+	};
+
+	// 处理封面文件
+	const handleCoverFile = (file: File) => {
+		if (!file.type.startsWith("image/")) {
+			toast.error("请上传有效的图片文件");
+			return;
+		}
+
+		customCoverFile.value = file;
+		customCoverUrl.value = URL.createObjectURL(file);
+	};
+
+	// 移除自定义封面
+	const removeCustomCover = () => {
+		customCoverFile.value = null;
+		customCoverUrl.value = "";
+	};
+
 	// 上传相关状态和逻辑
 	interface State {
 		calculating: boolean;
@@ -765,7 +873,23 @@
 					return;
 				}
 
-				const coverBlob = frames.value[selectedFrameIndex.value!].blob;
+				let coverBlob: Blob;
+				if (useAutoFrames.value === "true") {
+					// 使用自动截取的帧
+					if (!selectedFrameIndex.value && selectedFrameIndex.value !== 0) {
+						toast.error("请选择封面帧");
+						return;
+					}
+					coverBlob = frames.value[selectedFrameIndex.value].blob;
+				} else {
+					// 使用自定义上传的封面
+					if (!customCoverFile.value) {
+						toast.error("请上传封面图片");
+						return;
+					}
+					coverBlob = customCoverFile.value;
+				}
+
 				const coverFile = new File([coverBlob], "cover.png", {
 					type: "image/png",
 				});

@@ -1,17 +1,17 @@
 <template>
 	<header class="border-b-2 w-full fixed top-0">
 		<template
-			class="flex justify-between items-center max-w-[80dvw] h-[80px] ml-auto mr-auto"
+			class="flex justify-between items-center max-w-[80dvw] h-14 ml-auto mr-auto"
 		>
 			<div
-				class="text-2xl font-bold text-center cursor-pointer"
-				@click="router.push('/')"
+				class="font-bold text-center cursor-pointer"
+				@click="routerTransition('/')"
 			>
 				<div class="text-xl" v-if="systemData?.system[0].title.title">
 					{{ systemData?.system[0].title.title }}
 				</div>
 				<div
-					class="tracking-widest"
+					class="tracking-widest text-xs"
 					v-if="systemData?.system[0].title.subTitle"
 				>
 					{{ systemData?.system[0].title.subTitle }}
@@ -20,7 +20,7 @@
 			<NavigationMenu class="justify-self-start mr-auto ml-10" />
 			<template class="flex gap-4">
 				<Button
-					@click="router.push('/login')"
+					@click="routerTransition('/login')"
 					class="cursor-pointer"
 					v-if="!userStore.isLogin"
 					>登录</Button
@@ -29,14 +29,14 @@
 					<template v-slot:avatar>
 						<Avatar
 							class="cursor-pointer"
-							@click="router.push('/profile')"
+							@click="routerTransition('/user')"
 							v-if="userStore.isLogin"
 						/>
 					</template>
 					<template v-slot:avatarMenu>
 						<div
 							class="px-2 py-1.5 text-sm rounded hover:bg-accent hover:text-accent-foreground cursor-pointer h-10 flex flex-row justify-between leading-7"
-							@click="router.push(item.link)"
+							@click="routerTransition(item.link)"
 							v-for="item in filteredAvatarMenu"
 							:key="item._id"
 						>

@@ -1,9 +1,9 @@
 <template>
 	<Nav
 		v-if="!isAdminRoute"
-		class="top-0 sticky z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+		class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
 	/>
-	<main class="w-full h-fit flex justify-center align-middle">
+	<main class="w-full flex justify-center align-middle min-h-[80vh]">
 		<RouterView />
 	</main>
 </template>

@@ -25,7 +25,7 @@
 						<DropdownMenuItem
 							v-for="item in filteredAvatarMenu"
 							:key="item._id"
-							@click="router.push(item.link)"
+							@click="routerTransition(item.link)"
 							class="cursor-pointer"
 						>
 							<div class="flex flex-row gap-2 items-center">
@@ -77,10 +77,22 @@
 	const { userInfo } = storeToRefs(userStore);
 
 	const filteredAvatarMenu = computed(() => {
-		return systemData.value?.avatarMenuAll || [];
+		return systemData.value?.avatarMenuAll.slice(0, -1) || [];
 	});
 
-	function handleLogout() {
-		userStore.logout();
+	async function handleLogout() {
+		await userStore.logout();
+		routerTransition("/login");
+	}
+
+	function routerTransition(url: string) {
+		if (!url) return;
+		if (!document.startViewTransition) {
+			router.push(url);
+			return;
+		}
+		document.startViewTransition(() => {
+			router.push(url);
+		});
 	}
 </script>

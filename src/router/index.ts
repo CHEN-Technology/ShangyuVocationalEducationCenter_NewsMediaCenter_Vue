@@ -99,6 +99,23 @@ const router = createRouter({
 			name: "video",
 			component: () => import("@/views/VideoView.vue"),
 		},
+		{
+			path: "/video/category/:value",
+			name: "video-category",
+			component: () => import("@/views/VideoCategoryView.vue"),
+		},
+		{
+			path: "/user",
+			name: "user",
+			component: () => import("@/views/user/UserView.vue"),
+			children: [
+				{
+					path: "profile",
+					name: "user-profile",
+					component: () => import("@/views/user/UserProfileView.vue"),
+				},
+			],
+		},
 	],
 });
 

@@ -25,7 +25,7 @@
 		"@videojs/themes": "^1.0.1",
 		"@vime/core": "^5.4.1",
 		"@vime/vue-next": "^5.4.1",
-		"@vueuse/core": "^13.1.0",
+		"@vueuse/core": "^13.2.0",
 		"@vueuse/integrations": "^13.1.0",
 		"artplayer": "^5.2.3",
 		"axios": "^1.8.4",

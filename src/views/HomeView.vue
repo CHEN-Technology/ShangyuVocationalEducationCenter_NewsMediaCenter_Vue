@@ -1,7 +1,50 @@
 <template>
 	<div class="container mx-auto px-4 py-6">
+		<section :class="{ 'mb-5': isSticky }">
+			<div
+				class="fixed top-14.5 left-0 right-0 z-50 shadow-md py-2 px-4 transition-all duration-300 ease-in-out"
+				:class="{
+					'translate-y-0 opacity-100 backdrop-blur supports-[backdrop-filter]:bg-background/60 ':
+						isSticky,
+					'-translate-y-5 opacity-0 pointer-events-none bg-transparent':
+						!isSticky,
+				}"
+			>
+				<Button
+					v-for="(category, index) in visibleCategories"
+					:key="category._id"
+					variant="ghost"
+					@click="routerTransition(`/video/category/${category.value}`)"
+					class="whitespace-nowrap cursor-pointer w-1/13"
+				>
+					{{ category.name }}
+				</Button>
+
+				<DropdownMenu v-if="hiddenCategories.length > 0">
+					<DropdownMenuTrigger as-child>
+						<Button variant="ghost" class="whitespace-nowrap cursor-pointer">
+							更多
+							<ChevronDown class="ml-1 h-4 w-4" />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent>
+						<DropdownMenuGroup>
+							<DropdownMenuItem
+								v-for="category in hiddenCategories"
+								:key="category._id"
+								@click="routerTransition(`/video/category/${category.value}`)"
+								class="cursor-pointer"
+							>
+								{{ category.name }}
+							</DropdownMenuItem>
+						</DropdownMenuGroup>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
+		</section>
+
 		<section class="mb-5">
-			<div class="flex flex-wrap gap-2 max-h-52 overflow-hidden">
+			<div class="flex flex-wrap gap-2 max-h-52 overflow-hidden bg-background">
 				<Button
 					v-for="(category, index) in visibleCategories"
 					:key="category._id"
@@ -40,7 +83,7 @@
 				<Carousel
 					v-if="!loading"
 					class="rounded-xl overflow-hidden"
-					:opts="{ align: 'center', loop: true }"
+					:opts="{ align: 'center', loop: true, dragFree: false }"
 					:plugins="[
 						Autoplay({
 							delay: 5000,
@@ -55,12 +98,14 @@
 							loop: 'is-loop',
 						}),
 					]"
+					ref="carouselRef"
+					@init-api="onSlideChange"
 				>
 					<CarouselContent>
 						<CarouselItem v-for="(item, index) in featuredVideos" :key="index">
 							<div class="relative aspect-video">
 								<img
-									:src="formattedPath(item.cover)"
+									:src="formatPath(item.cover)"
 									:alt="item.title"
 									class="w-full h-full object-cover"
 								/>
@@ -75,7 +120,10 @@
 											{{ item.description }}
 										</p>
 										<div class="flex space-x-4">
-											<Button @click="routerTransition(`/video/${item._id}`)">
+											<Button
+												@click="routerTransition(`/video/${item._id}`)"
+												class="bg-white text-black hover:text-white dark:hover:bg-black cursor-pointer"
+											>
 												<Play class="mr-2 h-4 w-4" />
 												立即观看
 											</Button>
@@ -85,8 +133,14 @@
 							</div>
 						</CarouselItem>
 					</CarouselContent>
-					<CarouselPrevious class="left-4" />
-					<CarouselNext class="right-4" />
+					<CarouselPrevious class="left-4 cursor-pointer" />
+					<CarouselNext class="right-4 cursor-pointer" />
+					<CarouselIndicators
+						:total-slides="featuredVideos.length"
+						:current-index="currentIndex"
+						@change="goToSlide"
+						class="absolute bottom-8 right-10"
+					/>
 				</Carousel>
 
 				<div v-else class="aspect-video rounded-xl overflow-hidden">
@@ -99,31 +153,61 @@
 					<div
 						v-for="video in topVideos"
 						:key="video._id"
-						class="flex gap-3 cursor-pointer"
-						@click="routerTransition(`/video/${video._id}`)"
+						class="flex gap-3 cursor-pointer group"
+						@mouseenter="handleVideoHover(video)"
+						@mouseleave="stopVideoPreview(video._id)"
+						@click="routerBlank(`/video/${video._id}`)"
 					>
-						<div class="relative aspect-video w-1/2 rounded-md overflow-hidden">
+						<div
+							class="relative aspect-video w-1/2 rounded-md overflow-hidden group"
+						>
+							<!-- 封面图片 -->
 							<img
-								:src="formattedPath(video.cover)"
-								:alt="video.title"
-								class="w-full h-full object-cover"
+								v-if="!hoveredVideo || hoveredVideo._id !== video._id"
+								:src="formatPath(video.cover)"
+								class="absolute inset-0 w-full h-full object-cover z-0"
 							/>
+							<!-- 视频预览 -->
+							<video
+								v-if="hoveredVideo && hoveredVideo._id === video._id"
+								:id="`video-preview-${video._id}`"
+								class="absolute inset-0 w-full h-full object-cover z-0"
+								muted
+								playsinline
+								@timeupdate="updateProgress(video._id, $event)"
+							></video>
+
+							<!-- 渐变遮罩层（铺满容器，底部渐变） -->
 							<div
-								class="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1 rounded"
+								class="absolute inset-x-0 bottom-0 h-1/3 z-10 bg-gradient-to-t from-black/70 to-transparent transition-all duration-300 group-hover:opacity-0"
+							></div>
+
+							<!-- 时间显示容器（定位在遮罩层内） -->
+							<div
+								class="absolute bottom-1 right-1 z-20 text-white text-sm px-2 py-1 rounded-sm font-mono tracking-tighter"
 							>
-								{{ formatDuration(video.duration as number) }}
+								{{
+									hoveredVideo?._id === video._id
+										? `${currentProgress[video._id] || "00:00"}/${formatDuration(video.duration)}`
+										: formatDuration(video.duration)
+								}}
 							</div>
 						</div>
-						<div class="w-1/2">
-							<h3 class="font-medium line-clamp-2 text-sm">
+						<div class="w-1/2 flex flex-col justify-evenly">
+							<h3
+								class="font-medium line-clamp-2 text-sm hover:text-muted-foreground"
+							>
 								{{ video.title }}
 							</h3>
-							<p class="text-xs text-muted-foreground mt-1">
-								{{ video.author || "未知作者" }}
-							</p>
-							<p class="text-xs text-muted-foreground">
-								{{ formatNumber(video.hits || 0) }}次观看
-							</p>
+							<div class="flex justify-between gap-x-2 text-xs">
+								<p class="text-xs text-muted-foreground">
+									{{ video.author || "未知作者" }} ·
+									{{ formatDate(video.uploadDate) }}
+								</p>
+								<p class="text-xs text-muted-foreground">
+									{{ formatNumber(video.hits || 0) }}次观看
+								</p>
+							</div>
 						</div>
 					</div>
 
@@ -160,36 +244,64 @@
 		<section>
 			<div
 				v-if="!loading"
-				class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+				class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5"
 			>
 				<div
 					v-for="video in recommendedVideos"
 					:key="video._id"
 					class="cursor-pointer"
-					@click="routerTransition(`/video/${video._id}`)"
+					@mouseenter="handleVideoHover(video)"
+					@mouseleave="stopVideoPreview(video._id)"
+					@click="routerBlank(`/video/${video._id}`)"
 				>
-					<div class="relative aspect-video rounded-md overflow-hidden">
+					<div class="relative aspect-video rounded-md overflow-hidden group">
+						<!-- 封面图片 -->
 						<img
-							:src="formattedPath(video.cover)"
-							:alt="video.title"
-							class="w-full h-full object-cover"
+							v-if="!hoveredVideo || hoveredVideo._id !== video._id"
+							:src="formatPath(video.cover)"
+							class="absolute inset-0 w-full h-full object-cover z-0"
 						/>
+						<!-- 视频预览 -->
+						<video
+							v-if="hoveredVideo && hoveredVideo._id === video._id"
+							:id="`video-preview-${video._id}`"
+							class="absolute inset-0 w-full h-full object-cover z-0"
+							muted
+							playsinline
+							@timeupdate="updateProgress(video._id, $event)"
+						></video>
+
+						<!-- 渐变遮罩层（铺满容器，底部渐变） -->
 						<div
-							class="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1 rounded"
+							class="absolute inset-x-0 bottom-0 h-1/3 z-10 bg-gradient-to-t from-black/70 to-transparent transition-all duration-300 group-hover:opacity-0"
+						></div>
+
+						<!-- 时间显示容器（定位在遮罩层内） -->
+						<div
+							class="absolute bottom-1 right-1 z-20 text-white text-sm px-2 py-1 rounded-sm font-mono tracking-tighter"
 						>
-							{{ formatDuration(video.duration as number) }}
+							{{
+								hoveredVideo?._id === video._id
+									? `${currentProgress[video._id] || "00:00"}/${formatDuration(video.duration)}`
+									: formatDuration(video.duration)
+							}}
 						</div>
 					</div>
 					<div class="mt-4">
 						<h3 class="font-medium line-clamp-2 text-sm h-10">
 							{{ video.title }}
 						</h3>
-						<p class="text-xs text-muted-foreground mt-1">
-							{{ video.author || "未知作者" }}
-						</p>
-						<p class="text-xs text-muted-foreground">
-							{{ formatNumber(video.hits || 0) }}次观看
-						</p>
+						<div
+							class="mt-2 flex justify-between text-sm text-muted-foreground"
+						>
+							<p class="text-xs text-muted-foreground mt-1">
+								{{ video.author || "未知作者" }} ·
+								{{ formatDate(video.uploadDate) }}
+							</p>
+							<p class="text-xs text-muted-foreground">
+								{{ formatNumber(video.hits || 0) }}次观看
+							</p>
+						</div>
 					</div>
 				</div>
 
@@ -216,29 +328,26 @@
 					<Skeleton class="h-3 w-3/4" />
 				</div>
 			</div>
-			<!-- 加载更多按钮 -->
-			<div class="flex justify-center mt-8">
-				<Button
-					variant="outline"
-					@click="loadMoreRecommendedVideos"
-					:disabled="loadingMore"
-				>
-					<span v-if="!loadingMore">加载更多</span>
-					<span v-else>加载中...</span>
-				</Button>
+
+			<div
+				class="flex justify-center mt-8 h-10 text-muted-foreground"
+				v-if="!hasMore"
+			>
+				看官，没有更多了~
 			</div>
 		</section>
 	</div>
 </template>
 
-<script setup lang="ts">
-	import { ref, onMounted, watch, onUnmounted } from "vue";
+<script setup>
+	import { ref, onMounted, watch, onUnmounted, nextTick, reactive } from "vue";
 	import {
 		Carousel,
 		CarouselContent,
 		CarouselItem,
 		CarouselNext,
 		CarouselPrevious,
+		CarouselIndicators,
 	} from "@/components/ui/carousel";
 	import {
 		DropdownMenu,
@@ -254,68 +363,163 @@
 	import { useRouter } from "vue-router";
 	import Autoplay from "embla-carousel-autoplay";
 	import ClassNames from "embla-carousel-class-names";
-
-	interface Video {
-		_id: string;
-		title: string;
-		description: string;
-		cover: string;
-		uploadDate: string;
-		status: string;
-		hits?: number;
-		duration?: number;
-		size: number;
-		author?: string;
-	}
-
-	interface Category {
-		_id: string;
-		name: string;
-		value: string;
-		order: number;
-	}
+	import shaka from "shaka-player";
+	import {
+		formatPath,
+		formatNumber,
+		formatDuration,
+		formatTime,
+		formatDate,
+	} from "@/utils/format";
+	import debounce from "@/utils/debounce";
 
 	const router = useRouter();
 
 	const loading = ref(true);
 	const loadingMore = ref(false);
-	const featuredVideos = ref<Video[]>([]);
-	const categories = ref<Category[]>([]);
-	const topVideos = ref<Video[]>([]);
-	const recommendedVideos = ref<Video[]>([]);
+	const featuredVideos = ref([]);
+	const categories = ref([]);
+	const topVideos = ref([]);
+	const recommendedVideos = ref([]);
 	const currentPage = ref(1);
 	const hasMore = ref(true);
 
-	const visibleCategories = ref<Category[]>([]);
-	const hiddenCategories = ref<Category[]>([]);
+	const visibleCategories = ref([]);
+	const hiddenCategories = ref([]);
+	const carouselRef = ref();
 
-	const handleScroll = () => {
-		// 如果正在加载或没有更多数据，则不处理
-		if (loadingMore.value || !hasMore.value) return;
+	const hoveredVideo = ref(null);
 
-		const scrollTop =
-			document.documentElement.scrollTop || document.body.scrollTop;
-		const scrollHeight =
-			document.documentElement.scrollHeight || document.body.scrollHeight;
-		const clientHeight =
-			document.documentElement.clientHeight || document.body.clientHeight;
+	const isSticky = ref(false);
+	const transitioning = ref(false);
+	const categoryOriginalTop = ref(0);
 
-		// 当滚动到距离底部200px时加载更多
-		if (scrollTop + clientHeight >= scrollHeight - 200) {
-			loadMoreRecommendedVideos();
+	// 存储各视频当前进度
+	const currentProgress = reactive({});
+
+	// 更新播放进度
+	const updateProgress = (videoId, event) => {
+		const video = event.target;
+		if (!video) return;
+
+		// 实时更新当前进度（格式：00:00）
+		currentProgress[videoId] = formatTime(video.currentTime);
+	};
+
+	const shakaPlayers = ref({});
+
+	const initShakaPlayer = async () => {
+		// 确保 Shaka Player 已加载
+		shaka.polyfill.installAll();
+	};
+
+	// 处理鼠标悬停
+	const handleVideoHover = async (video) => {
+		hoveredVideo.value = video;
+
+		await nextTick(); // 等待 DOM 更新
+
+		const videoElement = document.getElementById(`video-preview-${video._id}`);
+		if (!videoElement) return;
+
+		const sourceUrl = getVideoSource(video);
+		if (!sourceUrl) return;
+
+		// 如果已有播放器实例，先销毁
+		if (shakaPlayers.value[video._id]) {
+			shakaPlayers.value[video._id].unload();
+			shakaPlayers.value[video._id].detach(); // 解除绑定
+		}
+
+		// ✅ 正确方式：先创建 Player，再 attach 到 video 元素
+		const player = new shaka.Player(); // 不再传入 mediaElement
+		player.attach(videoElement); // 使用 attach 绑定
+		shakaPlayers.value[video._id] = player;
+
+		try {
+			// 加载 DASH 流
+			await player.load(sourceUrl);
+			videoElement.muted = true; // 静音
+			setTimeout(() => {
+				videoElement.play();
+			}, 500); // 尝试播放
+		} catch (error) {
+			console.error("Shaka Player 加载失败:", error);
 		}
 	};
 
-	// 防抖函数
-	const debounce = (fn: Function, delay: number) => {
-		let timer: number;
-		return (...args: any[]) => {
-			clearTimeout(timer);
-			timer = setTimeout(() => fn(...args), delay);
-		};
+	// 停止视频预览
+	const stopVideoPreview = (videoId) => {
+		const videoElement = document.getElementById(`video-preview-${videoId}`);
+		if (videoElement) {
+			videoElement.removeEventListener("timeupdate", updateProgress);
+		}
+		if (shakaPlayers.value[videoId]) {
+			const player = shakaPlayers.value[videoId];
+			player.unload(); // 卸载流
+			player.detach(); // 解除绑定（重要！）
+			delete shakaPlayers.value[videoId]; // 移除引用
+		}
+		hoveredVideo.value = null;
 	};
 
-	const debouncedScroll = debounce(handleScroll, 200);
+	// 获取视频源
+	const getVideoSource = (video) => {
+		// 找到 h264 编码的 DASH 流
+		const source = video.filePath.find((p) => p.transcode === "h264");
+		if (!source) return "";
+
+		// 返回 MPD 文件的完整 URL
+		return `${import.meta.env.VITE_APP_URL}/${source.path.replace(/\\/g, "/")}`;
+	};
+
+	// 跟踪当前活动索引
+	const currentIndex = ref(0);
+
+	// 当轮播图变化时更新索引
+	function onSlideChange(api) {
+		if (!api) {
+			// console.error("carouselApi 未正确传递");
+			return;
+		}
+
+		// 只在初始化时设置一次事件监听
+		api.on("select", () => {
+			currentIndex.value = api.selectedScrollSnap();
+			// console.log("当前索引更新为:", currentIndex.value);
+		});
+
+		// 初始化时设置当前索引
+		currentIndex.value = api.selectedScrollSnap();
+	}
+
+	// 处理指示器点击
+	function goToSlide(index) {
+		carouselRef.value?.scrollTo(index);
+	}
+
+	const handleScroll = () => {
+		transitioning.value = true;
+
+		const scrollPos = window.scrollY || document.documentElement.scrollTop;
+
+		isSticky.value = scrollPos > categoryOriginalTop.value + 120;
+
+		if (
+			!loadingMore.value &&
+			hasMore.value &&
+			scrollPos + window.innerHeight >= document.documentElement.scrollHeight
+		) {
+			loadMoreRecommendedVideos();
+		}
+
+		// 过渡结束后重置状态
+		setTimeout(() => {
+			transitioning.value = false;
+		}, 500);
+	};
+
+	const debouncedScroll = debounce(handleScroll, 0);
 
 	watch(
 		categories,
@@ -333,24 +537,6 @@
 		{ immediate: true }
 	);
 
-	function formattedPath(path: string) {
-		return `${import.meta.env.VITE_APP_URL}/${path.replace(/\\/g, "/")}`;
-	}
-
-	const formatNumber = (num: number) => {
-		return num >= 10000 ? `${(num / 10000).toFixed(1)}万` : num;
-	};
-
-	const formatDuration = (duration: number) => {
-		if (!duration || duration <= 0) return "00:00";
-
-		const minutes = Math.floor(duration / 60);
-		const seconds = Math.floor(duration % 60);
-
-		// 使用padStart确保两位数显示
-		return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-	};
-
 	const fetchData = async () => {
 		loading.value = true;
 		try {
@@ -360,33 +546,34 @@
 			);
 			if (categoriesResponse.data.success) {
 				categories.value = categoriesResponse.data.data.sort(
-					(a: Category, b: Category) => a.order - b.order
+					(a, b) => a.order - b.order
 				);
 			}
 
 			// 2. 获取轮播图数据
 			const featuredResponse = await axios.get(
-				`${import.meta.env.VITE_APP_URL}/video?limit=5`
+				`${import.meta.env.VITE_APP_URL}/video?sort=-hits&limit=5&status=normal`
 			);
+
+			// console.log("featuredResponse", featuredResponse);
+
 			if (featuredResponse.data.success) {
 				featuredVideos.value = featuredResponse.data.data;
 			}
 
-			// 3. 获取热门视频（按hits降序）
+			// 3. 获取最新视频
 			const topVideosResponse = await axios.get(
-				`${import.meta.env.VITE_APP_URL}/video?sort=-hits&limit=4`
+				`${import.meta.env.VITE_APP_URL}/video/news?status=normal`
 			);
+
+			// console.log("topVideosResponse", topVideosResponse);
+
 			if (topVideosResponse.data.success) {
 				topVideos.value = topVideosResponse.data.data;
 			}
 
-			// 4. 获取推荐视频（随机或按算法推荐）
-			const recommendedResponse = await axios.get(
-				`${import.meta.env.VITE_APP_URL}/video?page=1&limit=10`
-			);
-			if (recommendedResponse.data.success) {
-				recommendedVideos.value = recommendedResponse.data.data;
-			}
+			// 4. 获取推荐视频（初始加载）
+			await loadRecommendedVideos();
 		} catch (error) {
 			console.error("获取数据失败:", error);
 		} finally {
@@ -394,33 +581,67 @@
 		}
 	};
 
-	const loadMoreRecommendedVideos = async () => {
-		if (loadingMore.value || !hasMore.value) return;
+	const loadRecommendedVideos = async (reset = false) => {
+		if (loadingMore.value) return;
 
-		loadingMore.value = true;
-		currentPage.value += 1;
 		try {
+			loadingMore.value = true;
+
+			// 如果是重置加载，清空当前列表并重置页码
+			if (reset) {
+				recommendedVideos.value = [];
+				currentPage.value = 1;
+				hasMore.value = true;
+			}
+
+			// 构建排除ID列表（排除featuredVideos和topVideos中的视频ID）
+			const excludeIds = [
+				...featuredVideos.value.map((v) => v._id),
+				...topVideos.value.map((v) => v._id),
+			].join(",");
+
 			const response = await axios.get(
-				`${import.meta.env.VITE_APP_URL}/video?page=${currentPage.value}&limit=10`
-			);
-			if (response.data.success) {
-				// 如果返回的数据为空或少于limit，说明没有更多数据了
-				if (response.data.data.length === 0 || response.data.data.length < 10) {
-					hasMore.value = false;
+				`${import.meta.env.VITE_APP_URL}/video/recommended`,
+				{
+					params: {
+						page: currentPage.value,
+						limit: 10,
+						exclude: excludeIds,
+						status: "normal",
+					},
 				}
-				recommendedVideos.value = [
-					...recommendedVideos.value,
-					...response.data.data,
-				];
+			);
+
+			if (response.data.success) {
+				// 如果是第一页，直接替换数据
+				if (currentPage.value === 1) {
+					recommendedVideos.value = response.data.data;
+				} else {
+					// 否则追加数据
+					recommendedVideos.value = [
+						...recommendedVideos.value,
+						...response.data.data,
+					];
+				}
+
+				// 检查是否还有更多数据
+				hasMore.value = response.data.data.length >= 10;
 			}
 		} catch (error) {
-			console.error("加载更多失败:", error);
+			console.error("加载推荐视频失败:", error);
 		} finally {
 			loadingMore.value = false;
 		}
 	};
 
-	function routerTransition(url: string) {
+	const loadMoreRecommendedVideos = async () => {
+		if (!hasMore.value || loadingMore.value) return;
+
+		currentPage.value += 1;
+		await loadRecommendedVideos();
+	};
+
+	function routerTransition(url) {
 		if (!url) return;
 		if (!document.startViewTransition) {
 			router.push(url);
@@ -431,13 +652,51 @@
 		});
 	}
 
+	function routerBlank(url) {
+		window.open(url, "_blank");
+	}
+
+	// 添加SSE连接
+	const setupSSE = () => {
+		const eventSource = new EventSource(
+			`${import.meta.env.VITE_APP_URL}/video/updates`
+		);
+
+		eventSource.onmessage = (event) => {
+			try {
+				const data = JSON.parse(event.data);
+
+				if (data.type === "videos" || data.type === "categories") {
+					fetchData(); // 当收到更新通知时重新获取数据
+				}
+			} catch (error) {
+				console.error("Error parsing SSE data:", error);
+			}
+		};
+
+		eventSource.onerror = (error) => {
+			console.error("SSE error:", error);
+			// 尝试重新连接
+			setTimeout(setupSSE, 5000);
+		};
+
+		// 在组件卸载时关闭连接
+		onUnmounted(() => {
+			eventSource.close();
+		});
+	};
+
 	onMounted(() => {
 		fetchData();
 		window.addEventListener("scroll", debouncedScroll);
+		setupSSE();
+
+		initShakaPlayer;
 	});
 
 	onUnmounted(() => {
 		window.removeEventListener("scroll", debouncedScroll);
+		window.removeEventListener("scroll", handleScroll);
 	});
 </script>
 

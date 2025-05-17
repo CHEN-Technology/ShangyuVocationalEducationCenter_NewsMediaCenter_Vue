@@ -5,7 +5,7 @@
 				<SidebarMenuButton size="lg" as-child class="flex justify-center">
 					<div
 						class="text-xl font-bold text-center cursor-pointer"
-						@click="router.push('/')"
+						@click="routerTransition('/')"
 					>
 						<div class="tracking-widest">
 							{{
@@ -36,6 +36,17 @@
 	const systemDataStore = useSystemDataStore();
 
 	const { systemData } = storeToRefs(systemDataStore);
+
+	function routerTransition(url: string) {
+		if (!url) return;
+		if (!document.startViewTransition) {
+			router.push(url);
+			return;
+		}
+		document.startViewTransition(() => {
+			router.push(url);
+		});
+	}
 </script>
 
 <style scoped></style>

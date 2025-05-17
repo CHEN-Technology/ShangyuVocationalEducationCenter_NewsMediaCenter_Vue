@@ -1,5 +1,5 @@
 <template>
-	<div class="flex flex-col items-center gap-10 w-[30dvw] justify-center">
+	<div class="flex flex-col items-center gap-10 w-[30%] justify-center">
 		<div class="text-3xl font-bold">登录</div>
 		<AutoForm
 			class="w-2/3 space-y-6 flex flex-col"
@@ -26,7 +26,7 @@
 		</AutoForm>
 		<div>
 			还没有账号？<span
-				@click="router.push('/register')"
+				@click="routerTransition('/register')"
 				class="text-gray-500 hover:text-white cursor-pointer"
 			>
 				去注册></span
@@ -79,4 +79,15 @@
 			router.push("/");
 		}
 	});
+
+	function routerTransition(url: string) {
+		if (!url) return;
+		if (!document.startViewTransition) {
+			router.push(url);
+			return;
+		}
+		document.startViewTransition(() => {
+			router.push(url);
+		});
+	}
 </script>

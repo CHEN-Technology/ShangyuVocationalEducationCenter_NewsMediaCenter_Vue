@@ -1,5 +1,5 @@
 <template>
-	<div class="flex flex-col items-center gap-10 w-[30dvw] justify-center">
+	<div class="flex flex-col items-center gap-10 w-[30%] justify-center">
 		<div class="text-3xl font-bold">注册</div>
 		<AutoForm
 			class="w-2/3 space-y-6 flex flex-col"
@@ -24,6 +24,14 @@
 		>
 			<Button type="submit" class="cursor-pointer"> 注册 </Button>
 		</AutoForm>
+		<div>
+			已有账号？<span
+				@click="routerTransition('/login')"
+				class="text-gray-500 hover:text-white cursor-pointer"
+			>
+				去登录></span
+			>
+		</div>
 		<AlertDialog
 			:config="loginAndRegStore.config"
 			:sendData="loginAndRegStore.sendData"
@@ -86,4 +94,15 @@
 			}
 		}
 	});
+
+	function routerTransition(url: string) {
+		if (!url) return;
+		if (!document.startViewTransition) {
+			router.push(url);
+			return;
+		}
+		document.startViewTransition(() => {
+			router.push(url);
+		});
+	}
 </script>
